@@ -1,0 +1,49 @@
+<Project Sdk="Microsoft.NET.Sdk">
+  <PropertyGroup>
+    <TargetFramework>net472</TargetFramework>
+    <AssemblyName>MCPServer</AssemblyName>
+    <PlatformTarget>AnyCPU</PlatformTarget>
+    <DebugType>none</DebugType>
+    <EnableDefaultCompileItems>false</EnableDefaultCompileItems>
+  </PropertyGroup>
+  <ItemGroup>
+    <Compile Include="McpServerAddin.cs" />
+    <Compile Include="Models\McpMessages.cs" />
+    <Compile Include="Server\SseWriter.cs" />
+    <Compile Include="Server\McpSessionManager.cs" />
+    <Compile Include="Server\McpProtocol.cs" />
+    <Compile Include="Server\McpHttpServer.cs" />
+    <Compile Include="Tools\E3dApiWrapper.cs" />
+    <Compile Include="Tools\E3DToolHandler.cs" />
+    <Compile Include="Tools\E3dToolDefinitions.cs" />
+    <Reference Include="System.Windows.Forms" />
+    <Reference Include="Aveva.ApplicationFramework">
+      <HintPath>D:\AVEVA\Everything3D3.1\Aveva.ApplicationFramework.dll</HintPath>
+      <Private>False</Private>
+    </Reference>
+    <Reference Include="Aveva.Core.Database">
+      <HintPath>D:\AVEVA\Everything3D3.1\Aveva.Core.Database.dll</HintPath>
+      <Private>False</Private>
+    </Reference>
+    <Reference Include="Aveva.Core.Database.Filters">
+      <HintPath>D:\AVEVA\Everything3D3.1\Aveva.Core.Database.Filters.dll</HintPath>
+      <Private>False</Private>
+    </Reference>
+    <Reference Include="Aveva.Core.Utilities">
+      <HintPath>D:\AVEVA\Everything3D3.1\Aveva.Core.Utilities.dll</HintPath>
+      <Private>False</Private>
+    </Reference>
+    <Reference Include="Aveva.Core.Geometry">
+      <HintPath>D:\AVEVA\Everything3D3.1\Aveva.Core.Geometry.dll</HintPath>
+      <Private>False</Private>
+    </Reference>
+    <Reference Include="PMLNet">
+      <HintPath>D:\AVEVA\Everything3D3.1\PMLNet.dll</HintPath>
+      <Private>False</Private>
+    </Reference>
+    <Reference Include="Newtonsoft.Json">
+      <HintPath>D:\AVEVA\Everything3D3.1\Newtonsoft.Json.dll</HintPath>
+      <Private>False</Private>
+    </Reference>
+  </ItemGroup>
+</Project>

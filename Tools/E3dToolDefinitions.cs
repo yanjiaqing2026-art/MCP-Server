@@ -1,0 +1,450 @@
+using System.Collections.Generic;
+using E3DMcpServer.Models;
+
+namespace E3DMcpServer.Tools
+{
+    public static class E3dToolDefinitions
+    {
+        public static List<ToolDefinition> All => _all.Value;
+        private static readonly System.Lazy<List<ToolDefinition>> _all =
+            new System.Lazy<List<ToolDefinition>>(() => Build());
+
+        static List<ToolDefinition> Build()
+        {
+            return new List<ToolDefinition>
+            {
+                // ══ 查询 ═══════════════════════════════════
+                T("e3d_ce_get", "获取 E3D 中当前选中元素(CE)的名称、类型和坐标。返回格式:  '名称: /PIPE-001\\n类型: PIPE\\n坐标: X=8128637 Y=6205447 Z=41727'。这是查看'当前元素是什么'的首选工具。通常与 e3d_element_dump 配合使用：先 CE_GET 确认元素，再 DUMP 看全部属性。", NoParams()),
+
+                T("e3d_element_get", "按名称/路径获取元素信息。返回格式同 e3d_ce_get: '名称: X\\n类型: Y\\n坐标: ...'。参数 name 必须用完整路径如 /PIPE-001 或 /ZONE-01/BRAN-01。若元素不存在返回错误。",
+                   P("name:string:元素完整路径,如 /PIPE-001 或 /*。必填。"), R("name")),
+
+                T("e3d_element_children", "列出元素的直接子元素(members)。返回格式: 'N children:\\n  [TYPE] NAME @ (X,Y,Z)'。可选 type_filter 按类型过滤(如 ELBO,VALV,PIPE)。用于探索 E3D 层级结构。",
+                   P("name:string:父元素路径。留空使用 CE。可选。"),
+                   P("type_filter:string:按类型过滤,可用: PIPE,BRAN,ELBO,VALV,NOZZ,TEE,ZONE,SITE,EQUI。可选。")),
+
+                T("e3d_element_owner", "获取元素的直接父级(Owner)。返回格式同 e3d_ce_get。用于向上导航: 从 PIPE 找 BRAN, 从 BRAN 找 ZONE。",
+                   P("name:string:元素路径。留空使用 CE。可选。")),
+
+                T("e3d_attr_read", "读取元素的属性值。返回格式: 每行 'KEY: VALUE'。常用属性: ODIA(外径mm), WALL(壁厚mm), MTYP(材料), SPREF(管等级), SCHD(Schedule), PRES(设计压力), TEMP(设计温度℃), SBOR(公称口径mm), PURP(用途), FUNC(功能)。若指定 attrs 只返回匹配项, 留空返回 NAME,TYPE,DESC,PURP,POS,OWNER。用于查询管道设计参数。",
+                   P("name:string:元素路径。留空使用 CE。可选。"),
+                   P("attrs:string:属性名列表,英文逗号分隔。例: 'ODIA,WALL,TEMP'。可选。")),
+
+                T("e3d_search", "按类型搜索 E3D 数据库中的元素。返回格式: 'PIPE search: N results\\n  [PIPE] /NAME @ (X,Y,Z)'。filter 语法: 'ATTR OP VALUE', OP 可用: GT(大于), LT(小于), GE(≥), LE(≤), EQ(等于), NE(不等于)。例: filter='ODIA GT 200' 搜外径>200mm 的管道。max 默认50, 最大200。用于查找特定条件的管道/设备。",
+                   P("type:string:元素类型。可用: PIPE,BRAN,ELBO,VALV,NOZZ,TEE,ZONE,SITE,EQUI,STRU。必填。"),
+                   P("filter:string:过滤表达式,如 'ODIA GT 150' 或 'NAME EQ PIPE-101'。可选。"),
+                   P("max:integer:最大返回数,默认50。可选。"),
+                   R("type")),
+
+                T("e3d_project_info", "获取 E3D 项目信息。返回: 项目名(project), 数据库(mdb), 当前用户(user), 当前模块(module)。用于确认当前工作环境。", NoParams()),
+
+                T("e3d_measure", "测量两个元素之间的直线距离。返回格式: 'Distance: 2500.000 mm (dX=... dY=... dZ=...)'. 用于检查管道间距、碰撞评估。",
+                   P("name1:string:第一个元素的完整路径。必填。"),
+                   P("name2:string:第二个元素的完整路径。必填。"),
+                   R("name1", "name2")),
+
+                T("e3d_element_type", "获取元素的 E3D 内部类型名。返回格式: 'Type: PIPE' 或 'Type: ELBO'。用于确认元素的准确类型分类。",
+                   P("name:string:元素路径。留空使用 CE。可选。")),
+
+                T("e3d_element_path", "获取元素在 E3D 数据库中的完整路径(FQN)。返回类似 '/SITE-1/ZONE-A/PIPE-101'。用于了解元素在层级中的位置, 或为其他工具准备路径参数。",
+                   P("name:string:元素路径。留空使用 CE。可选。")),
+
+                // ══ 修改 ═══════════════════════════════════
+                T("e3d_attr_set", "设置 E3D 元素的属性值。修改后需调用 e3d_db_save 持久化。常用属性: ODIA(外径), WALL(壁厚), MTYP(材料), SPREF(管等级), SCHD, PRES(压力), TEMP(温度)。例: 修改设计温度 → attr='TEMP', value='250'。返回格式: 'OK: set ATTR=VALUE on NAME'。",
+                   P("name:string:元素完整路径。必填。"),
+                   P("attr:string:属性名,如 ODIA,WALL,MTYP,SPREF,TEMP,PRES。必填。"),
+                   P("value:string:新值。数字属性如 ODIA=219.1, 字符串属性如 MTYP='A106 Gr.B'。必填。"),
+                   R("name", "attr", "value")),
+
+                T("e3d_element_create", "在 E3D 中创建新元素。type 可用: PIPE, BRAN, ELBO, VALV, NOZZ, TEE, ZONE, SITE, EQUI, STRU, BOX 等。创建后必须设置属性(ODIA,WALL,MTYP,SPREF)并 SAVEWORK。owner 指定父级路径, 如 '/*' (根) 或 '/ZONE-01'。返回格式: 'OK: created TYPE NAME'。",
+                   P("type:string:元素类型(PIPE,BRAN,ELBO,VALV,NOZZ,TEE,ZONE,SITE,EQUI,STRU)。必填。"),
+                   P("name:string:新元素名称。必填。"),
+                   P("owner:string:父元素路径,如 '/*' 或 '/ZONE-01'。可选, 默认当前 CE 的 owner。"),
+                   R("type", "name")),
+
+                T("e3d_element_delete", "删除 E3D 中的元素。⚠ 不可逆! 删除前建议先 SAVEWORK。name 必须用完整路径。返回格式: 'OK: deleted NAME'。",
+                   P("name:string:要删除的元素完整路径。必填。"),
+                   R("name")),
+
+                T("e3d_element_rename", "重命名 E3D 元素。例: 将 /PIPE-OLD 改为 /PIPE-NEW。返回格式: 'OK: renamed OLD to NEW'。",
+                   P("name:string:当前完整路径。必填。"),
+                   P("new_name:string:新名称。必填。"),
+                   R("name", "new_name")),
+
+                T("e3d_element_copy", "复制 E3D 元素到目标位置。source 为源元素路径, dest 为目标父级路径。返回格式: 'OK: copied SOURCE to DEST'。",
+                   P("source:string:源元素完整路径。必填。"),
+                   P("dest:string:目标父级路径。必填。"),
+                   R("source", "dest")),
+
+                T("e3d_element_move", "移动元素到新的父元素下。name 为要移动的元素, new_owner 为新父级路径。返回格式: 'OK: moved NAME to OWNER'。",
+                   P("name:string:要移动的元素路径。必填。"),
+                   P("new_owner:string:新父元素路径。必填。"),
+                   R("name", "new_owner")),
+
+                // ══ PML ══════════════════════════════════
+                T("e3d_pml_exec", "在 E3D 中执行任意 PML 命令。🚨 完全数据库访问权限, 请谨慎! 支持所有 PML 语法: NEW/DELETE/MOVE/BY/POS/SAVEWORK/UNDO 等。PML 语法: 元素操作如 'NEW PIPE /NAME', 属性设置如 '!!CE.ODIA = 219.1', 查询如 'Q VAR !!CE.ODIA'。返回格式: 'Command executed.' 或错误信息。建议先用 e3d_pml_eval 试运行。",
+                   P("command:string:完整 PML 命令字符串。必填。"), R("command")),
+
+                T("e3d_pml_eval", "求值 PML 表达式并返回结果(不修改数据库)。用于安全地计算值或测试表达式。例: expression='!!CE.ODIA' 返回当前外径值, expression='2 * 3.14159 * 100' 返回计算结果。",
+                   P("expression:string:PML 表达式。必填。"), R("expression")),
+
+                // ══ 批量 ═══════════════════════════════════
+                T("e3d_batch_read", "批量读取多个元素的属性。elements 用逗号分隔路径列表。attrs 用逗号分隔属性名列表。返回格式: '--- NAME ---\\n  KEY: VALUE' 每组一段。用于同时查看多个管道的参数对比。",
+                   P("elements:string:元素路径列表,英文逗号分隔。必填。"),
+                   P("attrs:string:属性名列表,英文逗号分隔。必填。"),
+                   R("elements", "attrs")),
+
+                T("e3d_batch_set", "批量设置多个元素的同一属性为相同值。⚠ 会修改所有指定元素! elements 用逗号分隔。返回每元素的操作结果。",
+                   P("elements:string:元素路径列表,英文逗号分隔。必填。"),
+                   P("attr:string:属性名。必填。"),
+                   P("value:string:要设置的值。必填。"),
+                   R("elements", "attr", "value")),
+
+                T("e3d_collect", "收集指定类型的所有元素, 可选过滤条件和返回属性。类似 e3d_search + e3d_attr_read 的组合。返回格式: 'Found N TYPE elements:\\n  [TYPE] NAME\\n    KEY: VALUE'。",
+                   P("type:string:元素类型(PIPE,BRAN,ELBO,VALV等)。必填。"),
+                   P("filter:string:过滤表达式,如 'ODIA GT 150'。可选。"),
+                   P("attrs:string:要返回的属性列表,逗号分隔。可选, 留空只返回名称和类型。"),
+                   R("type")),
+
+                T("e3d_pipeline_export", "导出当前选中管道的完整层级树: PIPE→BRAN→ELBO/VALV 等子组件, 每级带属性。返回格式: 缩进树形 '[TYPE] NAME\\n  KEY: VALUE'。用于理解管道结构和发现子组件。",
+                   P("pipe_name:string:管道完整路径。留空使用 CE 或向上查找最近 PIPE。可选。")),
+
+                // ══ 导航 ═══════════════════════════════════
+                T("e3d_navigate", "将 E3D 当前元素(CE)导航到指定路径。path 支持: 完整路径如 '/ZONE-01/BRAN-01', 相对路径如 'OWNER'(父级), 特殊值 '/*'(世界根)。导航后, 后续不带 name 参数的工具调用都针对新 CE。",
+                   P("path:string:E3D 路径或特殊标识(OWNER/MEMBERS/CEPARENT/*)。必填。"),
+                   R("path")),
+
+                T("e3d_select", "在 E3D 3D 视图中选中并高亮指定元素。name 必须用完整路径。返回: 'Navigated to: [TYPE] NAME'。用于在视图中定位和可视化元素。",
+                   P("name:string:元素完整路径。必填。"),
+                   R("name")),
+
+                // ══ 数据库 ═══════════════════════════════════
+                T("e3d_db_save", "保存所有修改到 E3D 数据库(SAVEWORK)。在执行任何修改操作(attr_set, create, delete 等)后, 必须调用此工具才能持久化。修改后立即保存是好习惯。返回: 'Database saved.'。", NoParams()),
+
+                T("e3d_db_changes", "查看自上次 SAVEWORK 以来所有变更的元素列表(GETCHANGES)。返回格式: 'GETCHANGES executed.' (输出到 E3D 控制台)。用于确认修改了哪些元素。", NoParams()),
+
+                T("e3d_db_undo", "撤销上一步操作(UNDO)。只能撤销未保存的修改。返回: 'Undo executed.'。", NoParams()),
+
+                T("e3d_db_extract", "从 E3D 数据库提取指定类型的所有元素到当前会话(EXTRACT ALL)。type 如 PIPE, ZONE, SITE 等。返回格式: 'Extracted all TYPE.'。",
+                   P("type:string:元素类型。必填。"), R("type")),
+
+                // ══ 元素生命周期 ═══════════════════════════
+                T("e3d_element_exists", "检查元素是否存在于数据库中。返回: 'TRUE: NAME exists.' 或 'FALSE: NAME does not exist.'。用于在操作前确认元素存在。",
+                   P("name:string:元素完整路径。必填。"), R("name")),
+
+                T("e3d_element_equals", "判断两个路径是否指向同一个数据库对象。返回: 'TRUE: same element.' 或 'FALSE: different elements.'。用于比较不同路径是否指向同一元素。",
+                   P("name1:string:第一个元素路径。必填。"),
+                   P("name2:string:第二个元素路径。必填。"),
+                   R("name1","name2")),
+
+                T("e3d_element_revert", "撤销对指定元素的修改, 恢复到上次保存的状态(REVERT)。可选 attr 参数只恢复指定属性。返回格式: 'Reverted NAME'。",
+                   P("name:string:元素路径。可选。"),
+                   P("attr:string:指定要恢复的属性名。可选, 留空恢复全部。")),
+
+                T("e3d_element_dump", "导出元素的所有已知属性值。返回格式: '=== [TYPE] NAME ===\\n  KEY: VALUE' 每行一个属性。涵盖 NAME,TYPE,OWNER,POS,ORI,DIR,ODIA,WALL,MTYP,PRES,TEMP,SBOR,SCHD,SPREF,BORE,RADIUS,ANGLE,LENGTH,CONN,ARRIVE,LEAVE,HEAD,TAIL,CTYPE,STYPE,TTYP 等。用于全面了解一个元素的所有设计数据。",
+                   P("name:string:元素路径。留空使用 CE。可选。")),
+
+                // ══ 层次导航 ═══════════════════════════════
+                T("e3d_occurrence", "获取元素在设计/布置层次中的出现实例(Occurrence)。返回: 'Occurrence queried.'。用于理解设计层级中的实例关系。",
+                   P("name:string:元素路径。可选。")),
+
+                T("e3d_siblings", "列出与当前元素同级的所有兄弟元素。返回格式: 'Siblings of [TYPE] NAME:\\n  [TYPE] Name @ (X,Y,Z)'。用于浏览同一层级的所有元素。",
+                   P("name:string:元素路径。可选。")),
+
+                T("e3d_world", "获取 E3D 数据库的根元素(WORLD = /*)。返回格式同 e3d_ce_get。用途: 从根开始向下导航, 探索整个数据库树。", NoParams()),
+
+                T("e3d_wrt", "获取元素的参考坐标系(WRT - With Respect To)。返回格式: 'WRT queried.'。用于了解元素的坐标系参考。",
+                   P("name:string:元素路径。可选。")),
+
+                // ══ 属性 ═══════════════════════════════════
+                T("e3d_attr_list", "列出元素的所有可用属性名及其当前值。返回格式: 'Attributes of NAME:\\n  ATTR: VALUE'。如果只想看特定属性用 e3d_attr_read, 如果想知道'这个元素有哪些属性'用本工具。",
+                   P("name:string:元素路径。可选。")),
+
+                T("e3d_attr_info", "查询 E3D 属性的定义信息(类型、单位、有效值范围等)。返回: 'Queried attribute ATTR'。用于了解属性含义和约束。",
+                   P("attr:string:属性名,如 ODIA,WALL,SPREF。必填。"),
+                   P("type:string:元素类型,如 PIPE,BRAN。可选, 留空查通用定义。")),
+
+                // ══ 几何 ═══════════════════════════════════
+                T("e3d_pos_set", "设置元素的绝对位置。坐标单位为 mm。X=东(East), Y=北(North), Z=高(Up)。返回格式: 'Set NAME position to (X, Y, Z)'。",
+                   P("name:string:元素完整路径。必填。"),
+                   P("x:number:X 坐标(East, mm)。必填。"),
+                   P("y:number:Y 坐标(North, mm)。必填。"),
+                   P("z:number:Z 坐标(Up, mm)。必填。"),
+                   R("name","x","y","z")),
+
+                T("e3d_pos_move", "相对偏移元素位置(BY)。dx=X方向, dy=Y方向, dz=Z方向(mm)。正值向东/北/上。返回格式: 'Moved NAME by (dx, dy, dz)'。",
+                   P("name:string:元素完整路径。必填。"),
+                   P("dx:number:X 方向偏移(mm)。必填。"),
+                   P("dy:number:Y 方向偏移(mm)。必填。"),
+                   P("dz:number:Z 方向偏移(mm)。必填。"),
+                   R("name","dx","dy","dz")),
+
+                T("e3d_orientation_get", "获取元素的朝向(ORI)和方向(DIR)向量。返回格式: 'Orientation of NAME:\\n  ORI: ...\\n  DIR: ...'。用于了解管道走向。",
+                   P("name:string:元素路径。可选。")),
+
+                T("e3d_rotate", "旋转元素。axis 为旋转轴(X,Y,Z 或方向向量), angle 为旋转角度(度)。返回: 'Rotated NAME about AXIS by ANGLE deg.'。",
+                   P("name:string:元素路径。必填。"),
+                   P("axis:string:旋转轴(X/Y/Z 或向量)。必填。"),
+                   P("angle:number:旋转角度(度)。必填。"),
+                   R("name","axis","angle")),
+
+                T("e3d_reverse", "反转元素的方向。返回格式: 'Reversed NAME.'。用于翻转管道方向(Flow Direction)。",
+                   P("name:string:元素完整路径。必填。"), R("name")),
+
+                // ══ 连接 ═══════════════════════════════════
+                T("e3d_connect", "连接两个元素(如 HEAD 到 TAIL)。name1 连接到 name2。返回格式: 'Connected NAME1 to NAME2.'。用于管道组对连接。",
+                   P("name1:string:第一个元素路径。必填。"),
+                   P("name2:string:第二个元素路径。必填。"),
+                   R("name1","name2")),
+
+                T("e3d_disconnect", "断开元素的所有连接。返回格式: 'Disconnected NAME.'。",
+                   P("name:string:元素完整路径。必填。"), R("name")),
+
+                // ══ 阵列 ═══════════════════════════════════
+                T("e3d_array_add", "向元素阵列添加成员。array 为目标阵列路径, member 为要添加的元素。返回格式: 'Added MEMBER to ARRAY.'。",
+                   P("array:string:目标阵列元素路径。必填。"),
+                   P("member:string:要添加的成员路径。必填。"),
+                   R("array","member")),
+
+                T("e3d_array_remove", "从元素阵列移除指定位置的成员。index 从 1 开始。返回格式: 'Removed index N from ARRAY.'。",
+                   P("array:string:目标阵列元素路径。必填。"),
+                   P("index:integer:要移除的索引(1-based)。必填。"),
+                   R("array","index")),
+
+                T("e3d_array_sort", "对元素阵列排序。返回格式: 'Sorted ARRAY.'。",
+                   P("array:string:目标阵列元素路径。必填。"), R("array")),
+
+                // ══ 规格/目录 ═════════════════════════════
+                T("e3d_spec_query", "查询 E3D 规格(SPEC)或目录(CAT)的详细信息。spec 为规格名称(如 1C003, 3S001), 留空查全部。返回: 'Queried spec SPECNAME.'。用于了解可用规格及其参数。",
+                   P("spec:string:规格名称,如 '1C003' 或 '3S001'。可选, 留空查全部。")),
+
+                T("e3d_bom", "查询元素的材料表(BOM - Bill of Materials)。返回: 'Bill of materials queried for NAME.'。用于导出材料清单。",
+                   P("name:string:元素完整路径。必填。"), R("name")),
+
+                T("e3d_component_info", "获取管件的类型信息(CTYPE 组件类型, STYPE 子类型, TTYP 温度类型, DTSE 数据设置, SPWL 规格壁厚, MTYS 材料屈服应力)。返回格式: 'Component info for NAME:\\n  ATTR: VALUE'。用于了解管件的具体规格参数。",
+                   P("name:string:元素路径。可选。")),
+
+                // ══ 视图 ═══════════════════════════════════
+                T("e3d_view_zoom", "将 E3D 3D 视图缩放到指定元素。返回格式: 'Zoomed to NAME.'。用于在视图中定位元素。",
+                   P("name:string:元素完整路径。必填。"), R("name")),
+
+                T("e3d_view_fit", "将 E3D 3D 视图适配到所有可见元素(FIT)。返回: 'View fitted.'。", NoParams()),
+
+                T("e3d_view_colour", "设置元素在 E3D 3D 视图中的显示颜色。colour 可用: RED, GREEN, BLUE, YELLOW, CYAN, MAGENTA, WHITE, ORANGE, PINK。返回格式: 'Set colour of NAME to COLOUR.'。用于标记/高亮特定元素。",
+                   P("name:string:元素完整路径。必填。"),
+                   P("colour:string:颜色名(RED/GREEN/BLUE/YELLOW/CYAN/MAGENTA/WHITE/ORANGE/PINK)。必填。"),
+                   R("name","colour")),
+
+                // ══ 碰撞/检查 ═════════════════════════════
+                T("e3d_clash_check", "执行 E3D 碰撞检查并返回结构化报告(碰撞位置/元素对/间距)。type_or_name1 可以是元素类型(如 PIPE 检查所有管道碰撞)或单个元素路径。name2 可选(两元素间检查)。返回格式: '=== CLASH REPORT ===\\nTarget: PIPE\\nClash details: Clash 1: /PIPE-A vs /PIPE-B\\n...\\n=== END REPORT ==='。尝试程序化提取碰撞对和位置, 如果 PML 不支持则提示用 Q CLASH 查看 E3D 控制台。",
+                   P("type_or_name1:string:元素类型(如 PIPE)或元素路径。必填。"),
+                   P("name2:string:第二个元素路径。可选, 留空检查所有。"),
+                   R("type_or_name1")),
+
+                T("e3d_design_check", "对元素运行 E3D 设计规则检查(CHECK)。返回: 'Design check executed.'。检查结果输出到 E3D 控制台。",
+                   P("name:string:元素完整路径。必填。"), R("name")),
+
+                // ══ 管道操作 ═══════════════════════════════
+                T("e3d_pipe_cut", "在管道指定位置切割，将管道分成两段。at=切割位置(mm,距管道起点)。返回格式: 'OK: cut NAME at POSmm'。用于修改管道走向前先切断。",
+                   P("name:string:管道完整路径。必填。"),
+                   P("at:number:切割位置(mm)。必填。"),
+                   R("name", "at")),
+
+                T("e3d_pipe_gap", "在管道指定位置切出间隙(GAP)，可指定间隙大小。用于为插入管件预留空间。gap 默认10mm。返回格式: 'OK: gap NAME at POSmm (gap=Nmm)'。",
+                   P("name:string:管道完整路径。必填。"),
+                   P("at:number:切割位置(mm)。必填。"),
+                   P("gap:number:间隙距离(mm),默认10。可选。"),
+                   R("name", "at")),
+
+                T("e3d_pipe_join", "合并两根共线管道为一条连续管道。返回格式: 'OK: joined NAME1 and NAME2'。与 CUT/GAP 相反的操作。",
+                   P("name1:string:第一根管道路径。必填。"),
+                   P("name2:string:第二根管道路径。必填。"),
+                   R("name1", "name2")),
+
+                T("e3d_pipe_bend", "在管道指定位置插入弯头(ELBOW)，改变管道方向。可选 stype 指定弯头类型(如 90ELB/45ELB)。返回格式: 'OK: inserted bend on NAME at POSmm'。",
+                   P("name:string:管道完整路径。必填。"),
+                   P("at:number:插入位置(mm)。必填。"),
+                   P("stype:string:弯头类型(如 90ELB,45ELB)。可选,自动选择。"),
+                   R("name", "at")),
+
+                T("e3d_pipe_tee", "在管道指定位置插入三通(TEE)，用于分支管道。可选 stype 指定三通类型。返回格式: 'OK: inserted tee on NAME at POSmm'。",
+                   P("name:string:管道完整路径。必填。"),
+                   P("at:number:插入位置(mm)。必填。"),
+                   P("stype:string:三通类型。可选。"),
+                   R("name", "at")),
+
+                T("e3d_pipe_valve", "在管道指定位置插入阀门(VALVE)。可选 stype 指定阀门类型(GATE/GLOB/BALL/CHECK等)。插入前需先用 CUT/GAP 准备位置。返回格式: 'OK: inserted valve on NAME at POSmm'。",
+                   P("name:string:管道完整路径。必填。"),
+                   P("at:number:插入位置(mm)。必填。"),
+                   P("stype:string:阀门类型。可选。"),
+                   R("name", "at")),
+
+                T("e3d_pipe_flange", "在管道指定位置插入法兰(FLANGE)。可选 stype 指定法兰类型(WNRF/SORF/BLIND等)。返回格式: 'OK: inserted flange on NAME at POSmm'。",
+                   P("name:string:管道完整路径。必填。"),
+                   P("at:number:插入位置(mm)。必填。"),
+                   P("stype:string:法兰类型。可选。"),
+                   R("name", "at")),
+
+                T("e3d_pipe_reducer", "在管道指定位置插入大小头(REDUCER)，实现管径变化。返回格式: 'OK: inserted reducer on NAME at POSmm'。",
+                   P("name:string:管道完整路径。必填。"),
+                   P("at:number:插入位置(mm)。必填。"),
+                   R("name", "at")),
+
+                T("e3d_pipe_route", "对指定管道执行自动配管(ROUTE)，E3D 自动计算管道走向。返回格式: 'OK: auto-routed PIPE'。",
+                   P("pipe:string:管道完整路径。必填。"),
+                   R("pipe")),
+
+                // ══ 元素创建补充 ═══════════════════════════
+                T("e3d_support_create", "创建管道支架/管架(SUPPORT)元素。owner 指定所属管道/BRAN 路径。返回格式: 'OK: created support NAME'。",
+                   P("name:string:支架名称。必填。"),
+                   P("owner:string:所属父级路径。可选。"),
+                   P("stype:string:支架类型(HANGER/SHOE/GUIDE/ANCHOR)。可选。"),
+                   R("name")),
+
+                T("e3d_weld_create", "创建焊缝(WELD)元素。返回格式: 'OK: created weld NAME'。用于标记现场焊和工厂焊。",
+                   P("name:string:焊缝名称。必填。"),
+                   P("owner:string:所属父级路径。可选。"),
+                   R("name")),
+
+                T("e3d_label_create", "创建标签(LABEL)元素，显示文本标注。返回格式: 'OK: created label NAME'。",
+                   P("name:string:标签名称。必填。"),
+                   P("owner:string:所属父级路径。必填。"),
+                   P("text:string:标签显示文本。必填。"),
+                   R("name", "owner", "text")),
+
+                // ══ 属性补充 ═══════════════════════════════
+                T("e3d_attr_clear", "清除元素的属性值(CLEARA)。返回格式: 'OK: cleared ATTR on NAME'。用于重置错误设置的属性。",
+                   P("name:string:元素完整路径。必填。"),
+                   P("attr:string:要清除的属性名。必填。"),
+                   R("name", "attr")),
+
+                T("e3d_attr_copy", "将属性值从源元素复制到目标元素(COPYA)。返回格式: 'OK: copied attributes from SRC to DST'。attrs 用逗号分隔属性名列表。",
+                   P("source:string:源元素路径。必填。"),
+                   P("target:string:目标元素路径。必填。"),
+                   P("attrs:string:属性名列表,逗号分隔,如 'ODIA,WALL,MTYP'。必填。"),
+                   R("source", "target", "attrs")),
+
+                // ══ 可见性 ═══════════════════════════════════
+                T("e3d_show", "在 E3D 3D 视图中显示元素。返回格式: 'OK: showing NAME'。",
+                   P("name:string:元素完整路径。必填。"),
+                   R("name")),
+
+                T("e3d_hide", "在 E3D 3D 视图中隐藏元素。返回格式: 'OK: hiding NAME'。",
+                   P("name:string:元素完整路径。必填。"),
+                   R("name")),
+
+                T("e3d_view_iso", "切换 E3D 3D 视图为等轴测视角(ISO)。返回: 'OK: switched to isometric view'。", NoParams()),
+
+                T("e3d_view_plan", "切换 E3D 3D 视图为平面视角(PLAN)。返回: 'OK: switched to plan view'。", NoParams()),
+
+                T("e3d_view_elevation", "切换 E3D 3D 视图为立面视角(ELEVATION)。返回: 'OK: switched to elevation view'。", NoParams()),
+
+                // ══ 数据库补充 ═══════════════════════════════
+                T("e3d_db_claim", "锁定元素(CLAIM)，在多人协作环境中获取独占编辑权。返回格式: 'OK: claimed NAME'。",
+                   P("name:string:要锁定的元素路径。必填。"),
+                   R("name")),
+
+                T("e3d_db_release", "释放元素锁定(RELEASE)，允许他人编辑。返回格式: 'OK: released NAME'。",
+                   P("name:string:要释放的元素路径。必填。"),
+                   R("name")),
+
+                // ══ 出图 ═══════════════════════════════════
+                T("e3d_draft_iso", "生成管道等轴测图(ISODRAFT)并输出到指定文件。返回格式: 'OK: ISO draft of NAME -> PATH'。",
+                   P("name:string:管道完整路径。必填。"),
+                   P("output:string:输出文件路径,如 C:\\ISO\\PIPE-001.pdf。必填。"),
+                   R("name", "output")),
+
+                // ══ 定位补充 ═══════════════════════════════
+                T("e3d_pos_at", "将元素定位到绝对坐标(AT)。x/y/z 为 East/North/Up 坐标(mm)。返回格式: 'OK: positioned NAME at Ex Ny Uz'。",
+                   P("name:string:元素完整路径。必填。"),
+                   P("x:number:东向坐标(mm)。必填。"),
+                   P("y:number:北向坐标(mm)。必填。"),
+                   P("z:number:标高(mm)。必填。"),
+                   R("name", "x", "y", "z")),
+
+                T("e3d_pos_dist", "设置元素距离参考点的距离(DIST)。from 为参考元素路径。返回格式: 'OK: set NAME distance DISTmm'。",
+                   P("name:string:元素完整路径。必填。"),
+                   P("dist:number:距离(mm)。必填。"),
+                   P("from:string:参考元素路径。可选,默认当前参考点。"),
+                   R("name", "dist")),
+
+                T("e3d_pos_dir", "设置元素方向(DIR)。direction 可用: U(上)/D(下)/N(北)/S(南)/E(东)/W(西) 或组合如 U45E。返回格式: 'OK: set NAME direction to DIR'。",
+                   P("name:string:元素完整路径。必填。"),
+                   P("direction:string:方向标识(U/D/N/S/E/W 或组合)。必填。"),
+                   R("name", "direction")),
+
+                T("e3d_pos_ori", "绕指定 P-Point 旋转元素(ORI)。ppoint 为 P0/P1/P2/P3。返回格式: 'OK: oriented NAME around PPOINT'。",
+                   P("name:string:元素完整路径。必填。"),
+                   P("ppoint:string:P-Point 标识(P0/P1/P2/P3)。必填。"),
+                   R("name", "ppoint")),
+
+                T("e3d_pos_thr", "将元素对准参考点(THR)，使元素的 P-Point 通过目标点。返回格式: 'OK: through-point aligned NAME to TARGET'。",
+                   P("name:string:元素完整路径。必填。"),
+                   P("target:string:目标元素路径。必填。"),
+                   R("name", "target")),
+
+                // ══ 元素操作补充 ═══════════════════════════════
+                T("e3d_element_flip", "翻转管件的进出口方向(FLIP)。返回格式: 'OK: flipped NAME'。用于纠正管件安装方向。",
+                   P("name:string:元素完整路径。必填。"),
+                   R("name")),
+
+                T("e3d_force_connect", "强制连接两个元素(FCONN)，忽略对齐约束。返回格式: 'OK: force-connected NAME to TARGET'。用于特殊情况下的非标准连接。",
+                   P("name:string:源元素路径。必填。"),
+                   P("target:string:目标元素路径。必填。"),
+                   R("name", "target")),
+
+                // ══ 会话 ═══════════════════════════════════
+                T("e3d_session_status", "获取当前 E3D 会话状态。返回: 'Session status queried.\\n  project: ...\\n  mdb: ...\\n  user: ...\\n  module: ...'。用于确认 E3D 连接正常和工作环境。", NoParams()),
+            };
+        }
+
+        // ── helpers ──────────────────────────────────────
+
+        static ToolDefinition T(string name, string desc, params object[] items)
+        {
+            var props = new Dictionary<string, ToolProperty>();
+            List<string> req = null;
+
+            foreach (var item in items)
+            {
+                if (item is ToolProperty tp)
+                    props[tp.Description] = tp; // temp; will fix below
+                else if (item is string[] r)
+                    req = new List<string>(r);
+            }
+
+            // Build clean properties
+            var cleanProps = new Dictionary<string, ToolProperty>();
+            foreach (var raw in items)
+            {
+                if (raw is string s && s.Contains(":"))
+                {
+                    var parts = s.Split(new[] { ':' }, 3);
+                    if (parts.Length >= 3)
+                    {
+                        var propName = parts[0].Trim();
+                        var propType = parts[1].Trim();
+                        var propDesc = parts[2].Trim();
+                        cleanProps[propName] = new ToolProperty { Type = propType, Description = propDesc };
+                    }
+                }
+            }
+
+            return new ToolDefinition
+            {
+                Name = name,
+                Description = desc,
+                InputSchema = new ToolInputSchema
+                {
+                    Type = "object",
+                    Properties = cleanProps,
+                    Required = req
+                }
+            };
+        }
+
+        static object P(string spec) { return spec; }  // "name:type:description"
+        static object NoParams() { return null; }
+        static string[] R(params string[] names) { return names; }
+    }
+}
