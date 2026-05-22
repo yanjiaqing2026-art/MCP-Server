@@ -395,6 +395,45 @@ namespace E3DMcpServer.Tools
 
                 // ══ 会话 ═══════════════════════════════════
                 T("e3d_session_status", "获取当前 E3D 会话状态。返回: 'Session status queried.\\n  project: ...\\n  mdb: ...\\n  user: ...\\n  module: ...'。用于确认 E3D 连接正常和工作环境。", NoParams()),
+
+                // ══ Phase 5 — 工程分析 ═════════════════════
+                T("e3d_pipe_slope_check", "检查管道实际坡度是否符合规范要求。沿管道组件 (BRAN→component) 顺序读取每段 POS, 计算水平距离与高差, 输出每段坡度% 与超差状态 (OK / FLAT_REVERSED / STEEPER)。液体管道按规范要求 ≥0.5% 朝下。",
+                   P("pipe:string:管道完整路径,如 /PIPE-101。必填。"),
+                   P("min_slope:number:期望最小坡度 % (正值=朝下)。默认 0.5。可选。"),
+                   P("tolerance:number:坡度容差 %。默认 0.1。可选。"),
+                   R("pipe")),
+
+                T("e3d_pipe_drain_holes", "基于坡度计算结果, 自动识别管道低点并建议排液孔位置。返回低点组件路径 + 建议规格 (默认 DN20)。仅做建议, 不修改 E3D。",
+                   P("pipe:string:管道完整路径。必填。"),
+                   R("pipe")),
+
+                T("e3d_support_spacing_plan", "按管径 + 介质规则规划支架建议位置。默认按 ASME B31.3 Table 121.5 水服务间距表选择初始间距, 可通过 spacing(mm) 参数覆盖。沿组件累计长度, 每超过间距标记一个支架位置。",
+                   P("pipe:string:管道完整路径。必填。"),
+                   P("spacing:number:覆盖默认间距 mm (留空=查表)。可选。"),
+                   R("pipe")),
+
+                // ══ Phase 5 — 真批量 ═══════════════════════
+                T("e3d_element_batch_create", "一次性创建 N 个元素。items 为 JSON 数组, 每项 { type, name, owner? }。逐项调用 E3D API, 返回每项 OK/FAIL 摘要 + 总体统计。失败时由 Agent 通过 SkillRuntime rollback 撤销。",
+                   P("items:array:JSON 数组 [{type,name,owner?},...]。必填。"),
+                   R("items")),
+
+                T("e3d_attr_batch_set_multi", "一次性更新 N 个元素 × M 个属性。updates 为 JSON 数组, 每项 { name, attrs: { ATTR: VALUE, ... } }。返回每元素/属性级 OK/FAIL。",
+                   P("updates:array:JSON 数组 [{name,attrs:{...}},...]。必填。"),
+                   R("updates")),
+
+                // ══ Phase 5 — 事件订阅 ═════════════════════
+                T("e3d_subscribe", "订阅 E3D 事件流。events 为逗号分隔的事件类型 (current_element_changed/attr_changed/* 等)。返回 subscription_id, 后续用 e3d_poll_events 拉取。",
+                   P("events:string:逗号分隔的事件类型, 'current_element_changed' 等。必填。"),
+                   R("events")),
+
+                T("e3d_unsubscribe", "释放订阅。",
+                   P("subscription_id:string:e3d_subscribe 返回的 id。必填。"),
+                   R("subscription_id")),
+
+                T("e3d_poll_events", "拉取订阅缓冲区中累积的事件 (FIFO, 最多 max 条)。无新事件返回 '0 events'。",
+                   P("subscription_id:string:e3d_subscribe 返回的 id。必填。"),
+                   P("max:integer:本次最多拉取条数, 默认 50, 上限 500。可选。"),
+                   R("subscription_id")),
             };
         }
 

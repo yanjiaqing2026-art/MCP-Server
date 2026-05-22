@@ -161,6 +161,20 @@ namespace E3DMcpServer.Tools
                     // ── 会话 ──
                     case "e3d_session_status":     return HandleSessionStatus(args);
 
+                    // ── Phase 5 — 工程分析 ──
+                    case "e3d_pipe_slope_check":       return E3dPipeAnalysis.HandleSlopeCheck(args, _api);
+                    case "e3d_pipe_drain_holes":       return E3dPipeAnalysis.HandleDrainHoles(args, _api);
+                    case "e3d_support_spacing_plan":   return E3dPipeAnalysis.HandleSupportSpacingPlan(args, _api);
+
+                    // ── Phase 5 — 真批量 ──
+                    case "e3d_element_batch_create":   return E3dBatchOps.HandleBatchCreate(args, _api);
+                    case "e3d_attr_batch_set_multi":   return E3dBatchOps.HandleAttrBatchSetMulti(args, _api);
+
+                    // ── Phase 5 — 事件订阅 ──
+                    case "e3d_subscribe":              return E3dEventBus.HandleSubscribe(args);
+                    case "e3d_unsubscribe":            return E3dEventBus.HandleUnsubscribe(args);
+                    case "e3d_poll_events":            return E3dEventBus.HandlePollEvents(args);
+
                     default: return Err($"Unknown tool: {toolName}");
                 }
             }
