@@ -166,12 +166,54 @@ namespace E3DMcpServer.Tools
             Add(message);
         }
 
+        /// <summary>
+        /// 从 AVEVA 的消息对象里取**文本**。
+        ///
+        /// ★2026-07-29 真机第七跑抓到的 bug：这里原来直接 <c>message.ToString()</c>，
+        ///   结果回执里全是 <c>Aveva.Core.Utilities.Messaging.Implementation.PdmsOutputImpl</c>
+        ///   —— 那些实现类**没重写 ToString()**，打出来的是类型全名。
+        ///   于是监听器明明挂上了、内容却全是垃圾，而且**把真相吞了**
+        ///   （同一跑里四条 COLLECT 的真实报错也是这么丢的）。
+        ///
+        /// 正路：官方 XML 文档 <c>PdmsMessage.MessageText</c>
+        ///   "Obtains message text, filling in any substitutions"。
+        /// 用反射按 方法 → 属性 → ToString 三级降级：传进来的对象类型不确定
+        ///（PdmsMessage / PdmsOutput 都可能），写死一种会再摔一次。
+        /// </summary>
+        private static string TextOf(object o)
+        {
+            if (o == null) return null;
+            if (o is string s0) return s0;
+            try
+            {
+                var t = o.GetType();
+                var m = t.GetMethod("MessageText", Type.EmptyTypes);
+                if (m != null)
+                {
+                    var v = m.Invoke(o, null);
+                    if (v != null) return v.ToString();
+                }
+                var p = t.GetProperty("MessageText");
+                if (p != null)
+                {
+                    var v = p.GetValue(o, null);
+                    if (v != null) return v.ToString();
+                }
+            }
+            catch { /* 取文本失败就退回 ToString，不抛 */ }
+            var fallback = o.ToString();
+            // ★退到 ToString 时如实标注：类型全名不是消息文本，别让它冒充内容。
+            if (!string.IsNullOrEmpty(fallback) && fallback.StartsWith("Aveva."))
+                return "(取不到消息文本，只拿到类型名 " + fallback + ")";
+            return fallback;
+        }
+
         private void Add(object message)
         {
             try
             {
                 if (message == null) return;
-                var s = message.ToString();
+                var s = TextOf(message);
                 if (string.IsNullOrEmpty(s)) return;
                 lock (_gate)
                 {

@@ -88,6 +88,55 @@ namespace E3DMcpServer.Tools
                      + "\n（这条路是按官方 XML 文档签名写的但未编译验证 —— 把这行原文贴回来即可定位）";
             }
 
+            // ── ★第二段：未变换包围盒（visitor 给不出，只能走 CSGTree.Items）──────
+            // 病历（2026-07-29 真机第七跑）：visitor 回的是**定义参数**
+            //（Radius/Height/Transform），而 DISH「局部原点在底面还是拱顶」
+            // 靠参数**问不出来** —— 同一组 Radius+Height，原点在底或在顶都成立。
+            // 要定它必须拿**几何的实际范围**：CSGItem.Limits = "untransformed limits box"。
+            //   原点在底面 → 未变换 bbox 的 Z 约为 [0, +Height]
+            //   原点在拱顶 → 约为 [-Height, 0]
+            // ★Limits 的类型官方 XML 没写 —— **不猜**，反射把它的属性原样 dump 出来，
+            //   拿到真数据再定判据（猜一个字段名比不说更坏）。
+            try
+            {
+                var builder2 = CSGTreeBuilder.Instance;
+                var opts2 = builder2.CreateCSGTreeBuilderOptions();
+                try { opts2.Tube = true; } catch { }
+                // ★GetGeometry 回的是 CSGTree[] **数组**，不是单个 —— 编译器纠正的
+                //  （CS1061: CSGTree[] 未包含 Items 的定义）。一个元素可以有多棵树。
+                var trees = builder2.GetGeometry(el, opts2);
+                if (trees == null || trees.Length == 0)
+                {
+                    v._sb.AppendLine("  -- 未变换包围盒: GetGeometry 回空 --");
+                }
+                else
+                {
+                    v._sb.AppendLine($"  -- 未变换包围盒 (CSGTree×{trees.Length} 的 CSGItem.Limits, 原样 dump) --");
+                    int n = 0;
+                    foreach (var tree in trees)
+                    {
+                        if (tree == null) continue;
+                        foreach (var item in tree.Items)
+                        {
+                            if (item == null || ++n > 20) break;
+                            object lim = null, tf = null;
+                            try { lim = item.Limits; } catch { }
+                            try { tf = item.Transform; } catch { }
+                            v._sb.Append("    #").Append(n)
+                                 .Append(" TYPE=").Append(SafeStr(item.Type))
+                                 .Append(" LIMITS=").Append(DumpProps(lim))
+                                 .Append(" XFORM=").Append(DumpProps(tf))
+                                 .AppendLine();
+                        }
+                    }
+                    if (n == 0) v._sb.AppendLine("    (所有 tree.Items 都为空)");
+                }
+            }
+            catch (Exception ex)
+            {
+                v._sb.AppendLine("  -- 未变换包围盒: 取不到 (" + ex.GetBaseException().Message + ") --");
+            }
+
             if (v._count == 0)
                 return $"csg: 0 primitives (root: {path})\n"
                      + "  读到 0 个图元。可能是：该元素本身不带几何（纯容器）/ 选项把它过滤掉了。\n"
@@ -115,6 +164,45 @@ namespace E3DMcpServer.Tools
         private static string N(double d)
         {
             return Math.Round(d, 3).ToString(CultureInfo.InvariantCulture);
+        }
+
+        private static string SafeStr(object o)
+        {
+            try { return o == null ? "(null)" : o.ToString(); } catch { return "(?)"; }
+        }
+
+        /// <summary>
+        /// 把一个类型未知的对象的**公开属性**原样打出来。
+        /// 用在 <c>CSGItem.Limits</c> / <c>Transform</c> 上 —— 官方 XML 没写它们的类型，
+        /// **猜字段名不如把真实字段全摆出来**，拿到真数据再定判据。
+        /// 只取无参属性、只打数值/字符串，遇到复杂对象再下一层（最多两层，防爆量）。
+        /// </summary>
+        private static string DumpProps(object o, int depth = 0)
+        {
+            if (o == null) return "(null)";
+            var t = o.GetType();
+            if (o is double || o is float || o is int || o is long || o is bool || o is string)
+                return o is double d ? N(d) : o.ToString();
+            if (depth >= 2) return SafeStr(o);
+            var sb = new StringBuilder();
+            sb.Append(t.Name).Append('{');
+            bool first = true;
+            try
+            {
+                foreach (var p in t.GetProperties())
+                {
+                    if (p.GetIndexParameters().Length != 0 || !p.CanRead) continue;
+                    object v;
+                    try { v = p.GetValue(o, null); } catch { continue; }
+                    if (!first) sb.Append(',');
+                    first = false;
+                    sb.Append(p.Name).Append('=').Append(DumpProps(v, depth + 1));
+                }
+            }
+            catch { }
+            if (first) sb.Append(SafeStr(o));   // 一个属性都取不到 → 至少给个 ToString
+            sb.Append('}');
+            return sb.ToString();
         }
 
         private static string Fmt(double[] a)

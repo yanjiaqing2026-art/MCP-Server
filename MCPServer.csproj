@@ -53,6 +53,13 @@
       <HintPath>C:\项目\17-E3D插件\lib\Aveva.Core3D.CSG.dll</HintPath>
       <Private>False</Private>
     </Reference>
+    <!-- CSGItem.Limits / .Transform 的类型（D3Limits / D3Transform）在这个程序集里。
+         编译器点名要的（CS0012），不是我猜的。它没有配套 XML 文档 ——
+         所以 E3dCsgDump 用反射把这两个对象的属性原样 dump，不猜字段名。 -->
+    <Reference Include="Aveva.Core.Maths.Geometry">
+      <HintPath>C:\项目\17-E3D插件\lib\Aveva.Core.Maths.Geometry.dll</HintPath>
+      <Private>False</Private>
+    </Reference>
     <Reference Include="PMLNet">
       <HintPath>C:\项目\17-E3D插件\lib\PMLNet.dll</HintPath>
       <Private>False</Private>

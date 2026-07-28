@@ -1358,9 +1358,16 @@ namespace E3DMcpServer.Tools
             if (max <= 0) max = 500;
             try
             {
-                DbElementType specType = ResolveType("SPEC");
+                // ★2026-07-29 真机第七跑：这台 E3D 上 ResolveType("SPEC") 返回 **null**，
+                //   于是函数在这里就 return 了 —— 我上一轮加的「目录库根」那段代码
+                //   **一行都没执行到**。日志里那句"未解析出 SPEC 元素类型"就是这条早退。
+                //   而同一跑 e3d_search type=SPECIFICATION 能解析出类型（回的是 "0 results"
+                //   而不是"未解析出"）→ **类型码是全称 SPECIFICATION，不是 4 字缩写 SPEC**。
+                //   ★教训：加了新分支要确认它**真的走得到**，别让一个早退把新代码变成死码
+                //   （这正是本仓反复在治的「宣称生效实际不通」）。
+                DbElementType specType = ResolveType("SPEC") ?? ResolveType("SPECIFICATION");
                 if (specType == null)
-                    return "SpecList: E3D 未解析出 SPEC 元素类型（该 E3D 版本可能用不同类型码）。" +
+                    return "SpecList: E3D 未解析出 SPEC / SPECIFICATION 元素类型（该 E3D 版本可能用别的类型码）。" +
                            "可对已知规格名用 e3d_spec_query 逐个验证其存在与参数。";
 
                 var typeFilter = new TypeFilter(specType);
@@ -1949,12 +1956,45 @@ namespace E3DMcpServer.Tools
         }
 
         /// <summary>取 Command.Error 的文本，任何异常都吞掉（错误通道自身绝不能抛）。</summary>
+        /// <summary>
+        /// 从 AVEVA 消息对象取**文本**。
+        ///
+        /// ★2026-07-29 真机第七跑抓到：全仓这三处都直接 <c>.ToString()</c>，
+        ///   而 <c>PdmsMessageImpl</c> / <c>PdmsOutputImpl</c> **没重写 ToString()** →
+        ///   回执里出现 <c>REJECTED: Aveva.Core.Utilities.Messaging.Implementation.PdmsMessageImpl</c>。
+        ///   后果不是"难看"，是**把真相吞了** —— 那一跑四条 COLLECT 的真实报错全丢在这里，
+        ///   于是"为什么不行"变成了"不知道"。
+        /// 正路：官方 XML 文档 <c>PdmsMessage.MessageText</c>
+        ///   "Obtains message text, filling in any substitutions"。
+        /// 反射按 方法 → 属性 → ToString 三级降级（对象类型不确定，写死一种会再摔一次）。
+        /// </summary>
+        internal static string MsgText(object o)
+        {
+            if (o == null) return null;
+            var str = o as string;
+            if (str != null) return str;
+            try
+            {
+                var t = o.GetType();
+                var m = t.GetMethod("MessageText", Type.EmptyTypes);
+                if (m != null) { var v = m.Invoke(o, null); if (v != null) return v.ToString(); }
+                var p = t.GetProperty("MessageText");
+                if (p != null) { var v = p.GetValue(o, null); if (v != null) return v.ToString(); }
+            }
+            catch { }
+            var fb = o.ToString();
+            // 退到 ToString 时如实标注 —— 类型全名不是消息文本，别让它冒充内容。
+            if (!string.IsNullOrEmpty(fb) && fb.StartsWith("Aveva."))
+                return "(取不到消息文本，只拿到类型名 " + fb + ")";
+            return fb;
+        }
+
         private static string SafeErrorText(Aveva.Core.Utilities.CommandLine.Command c)
         {
             try
             {
                 var e = c.Error;
-                string s = e != null ? e.ToString() : null;
+                string s = MsgText(e);
                 return string.IsNullOrWhiteSpace(s) ? "E3D 未给出错误文本" : s.Trim();
             }
             catch { return "E3D 未给出错误文本"; }
@@ -1982,7 +2022,7 @@ namespace E3DMcpServer.Tools
                 Aveva.Core.Utilities.CommandLine.Command.RunPMLCommandInPDMS(assign);
                 Aveva.Core.Utilities.Messaging.PdmsMessage perr;
                 ok = Aveva.Core.Utilities.CommandLine.Command.GetStringFromPML(vn, out val, out perr);
-                err = ok ? null : (perr != null ? perr.ToString() : "PML 变量读回失败（无错误文本）");
+                err = ok ? null : (perr != null ? MsgText(perr) : "PML 变量读回失败（无错误文本）");
             }
             // DeletePMLVar 在本机 lib DLL 里是 internal（metadata 可见但编译不可达）→ 用 PML 自删
             finally { try { Aveva.Core.Utilities.CommandLine.Command.RunPMLCommandInPDMS($"VAR {vn} DELETE"); } catch { } }
@@ -2003,7 +2043,7 @@ namespace E3DMcpServer.Tools
                 string val;
                 Aveva.Core.Utilities.Messaging.PdmsMessage perr;
                 bool ok = Aveva.Core.Utilities.CommandLine.Command.GetStringFromPML(vn, out val, out perr);
-                err = ok ? null : (perr != null ? perr.ToString() : "PML 变量读回失败（无错误文本）");
+                err = ok ? null : (perr != null ? MsgText(perr) : "PML 变量读回失败（无错误文本）");
                 return ok ? (val ?? "") : "";
             }
             catch (Exception ex) { err = ex.Message; return ""; }
