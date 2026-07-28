@@ -14,35 +14,51 @@
     <Compile Include="Server\McpProtocol.cs" />
     <Compile Include="Server\McpHttpServer.cs" />
     <Compile Include="Tools\E3dApiWrapper.cs" />
+    <Compile Include="Tools\E3dCommandReference.cs" />
     <Compile Include="Tools\E3DToolHandler.cs" />
     <Compile Include="Tools\E3dToolDefinitions.cs" />
+    <Compile Include="Tools\E3dPipeAnalysis.cs" />
+    <Compile Include="Tools\E3dBatchOps.cs" />
+    <Compile Include="Tools\E3dEventBus.cs" />
+    <!-- 2026-07-29 新增：拿 E3D 打印输出 / 读真实几何图元。⚠ 未编译验证，见各文件头注 -->
+    <Compile Include="Tools\E3dOutputCapture.cs" />
+    <Compile Include="Tools\E3dCsgDump.cs" />
     <Reference Include="System.Windows.Forms" />
     <Reference Include="Aveva.ApplicationFramework">
-      <HintPath>D:\AVEVA\Everything3D3.1\Aveva.ApplicationFramework.dll</HintPath>
+      <HintPath>C:\项目\17-E3D插件\lib\Aveva.ApplicationFramework.dll</HintPath>
       <Private>False</Private>
     </Reference>
     <Reference Include="Aveva.Core.Database">
-      <HintPath>D:\AVEVA\Everything3D3.1\Aveva.Core.Database.dll</HintPath>
+      <HintPath>C:\项目\17-E3D插件\lib\Aveva.Core.Database.dll</HintPath>
       <Private>False</Private>
     </Reference>
     <Reference Include="Aveva.Core.Database.Filters">
-      <HintPath>D:\AVEVA\Everything3D3.1\Aveva.Core.Database.Filters.dll</HintPath>
+      <HintPath>C:\项目\17-E3D插件\lib\Aveva.Core.Database.Filters.dll</HintPath>
       <Private>False</Private>
     </Reference>
     <Reference Include="Aveva.Core.Utilities">
-      <HintPath>D:\AVEVA\Everything3D3.1\Aveva.Core.Utilities.dll</HintPath>
+      <HintPath>C:\项目\17-E3D插件\lib\Aveva.Core.Utilities.dll</HintPath>
       <Private>False</Private>
     </Reference>
     <Reference Include="Aveva.Core.Geometry">
-      <HintPath>D:\AVEVA\Everything3D3.1\Aveva.Core.Geometry.dll</HintPath>
+      <HintPath>C:\项目\17-E3D插件\lib\Aveva.Core.Geometry.dll</HintPath>
+      <Private>False</Private>
+    </Reference>
+    <Reference Include="Aveva.Core3D.Clasher">
+      <HintPath>C:\项目\17-E3D插件\lib\Aveva.Core3D.Clasher.dll</HintPath>
+      <Private>False</Private>
+    </Reference>
+    <!-- E3dCsgDump 靠它读真实几何图元（CSGTreeBuilder / CSGPrimitivesVisitor）。缺了整个文件编不过。 -->
+    <Reference Include="Aveva.Core3D.CSG">
+      <HintPath>C:\项目\17-E3D插件\lib\Aveva.Core3D.CSG.dll</HintPath>
       <Private>False</Private>
     </Reference>
     <Reference Include="PMLNet">
-      <HintPath>D:\AVEVA\Everything3D3.1\PMLNet.dll</HintPath>
+      <HintPath>C:\项目\17-E3D插件\lib\PMLNet.dll</HintPath>
       <Private>False</Private>
     </Reference>
     <Reference Include="Newtonsoft.Json">
-      <HintPath>D:\AVEVA\Everything3D3.1\Newtonsoft.Json.dll</HintPath>
+      <HintPath>C:\项目\17-E3D插件\lib\Newtonsoft.Json.dll</HintPath>
       <Private>False</Private>
     </Reference>
   </ItemGroup>

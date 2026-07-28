@@ -1,10 +1,6 @@
-# CLAUDE.md
+# AGENTS.md
 
-This file provides guidance to Claude Code (claude.ai/code) when working with code in this repository.
-
-## 修改 E3D 建模功能前必读
-
-任何涉及 E3D 命令、PML、元素创建、属性写入、定位、连接、事务或 MCP 写工具的工作，**必须先完整阅读** [`docs/Claude-Code-E3D建模全量指导书.md`](docs/Claude-Code-E3D建模全量指导书.md)。**不得根据工具名猜命令**；命令形态只从官方逐字手册 / e3d-commands.json / 本机 .NET API 取；未经目标 E3D 3.1 真机验证的模板**不得宣称可用**（只标 ⚠）。CE 作用域动词（ROTATE/CONNECT/POSITION/DELETE/INCLUDE…）不接前导元素名——先 `!!CE=/目标` 再发裸命令。
+This file provides guidance to Codex (Codex.ai/code) when working with code in this repository.
 
 ## 项目概述
 

@@ -1,0 +1,2025 @@
+[
+  {
+    "id": "e3d-cmd-pos-subsyntax",
+    "command": "<pos>",
+    "category": "coordinate",
+    "syntax": "<pos> = <nsy> <udz> <ewx> 任意顺序；<nsy>=North/Y/South <uval>，<udz>=Up/Z/Down <uval>，<ewx>=East/X/West <uval>",
+    "examples": [
+      "E1000",
+      "Z10",
+      "E30 D10 S20",
+      "E0 IN SITE"
+    ],
+    "notes": "轴向位置子语法图，是所有坐标类命令的构件。<axes> = WRT <gid> 或 IN <gid>（指定参考坐标系）。DRMPGC 第 13 章标准子语法图。",
+    "manualRef": "DRMPGC13.03.10",
+    "confidence": "official-verbatim",
+    "aliases": []
+  },
+  {
+    "id": "e3d-cmd-bpos-subsyntax",
+    "command": "<bpos>",
+    "category": "coordinate",
+    "syntax": "<bpos> = <pos> [<axes>] | <marke>（设计点）| <gid>（元素身份，取其原点）| @（光标）",
+    "examples": [
+      "E300 N1000 U2500",
+      "PIN6",
+      "/VESSEL10",
+      "@"
+    ],
+    "notes": "3D 位置子语法图。@ 光标定位仅在正交视图有效。<gid> 形态取该元素原点作为位置。",
+    "manualRef": "DRMPGC13.03.11",
+    "confidence": "official-verbatim",
+    "aliases": []
+  },
+  {
+    "id": "e3d-cmd-dir-subsyntax",
+    "command": "<dir>",
+    "category": "direction",
+    "syntax": "<dir> = 由 <nsy>/<ewx>/<udz> + <exp_val> 复合。N/S/E/W/U/D 及 Y=North, X=East, Z=Up",
+    "examples": [
+      "E",
+      "E45N",
+      "W-33D",
+      "Y",
+      "N45E33D"
+    ],
+    "notes": "轴向方向子语法图。复合方向如 E45N、N45E33D；负号表示 Up 方向（W-33D = West 33 Up）。",
+    "manualRef": "DRMPGC13.03.12",
+    "confidence": "official-verbatim",
+    "aliases": []
+  },
+  {
+    "id": "e3d-cmd-bdir-subsyntax",
+    "command": "<bdir>",
+    "category": "direction",
+    "syntax": "<bdir> = <dir> [<axes>] | <marke>（设计点方向）| FROM <bpos> TOWARDS <bpos> | TOWARDS <bpos>",
+    "examples": [
+      "N45E",
+      "PL",
+      "TOW E0 WRT SITE",
+      "FROM PIN6 TO PIN7"
+    ],
+    "notes": "3D 方向子语法图。额外支持 FROM...TOWARDS 与设计点方向。TOWARDS 可缩写 TOW。",
+    "manualRef": "DRMPGC13.03.13",
+    "confidence": "official-verbatim",
+    "aliases": [
+      "TOW"
+    ]
+  },
+  {
+    "id": "e3d-cmd-uval-subsyntax",
+    "command": "<uval>",
+    "category": "coordinate",
+    "syntax": ">-+- <value> -+- [EXPON int] -+- [SQuare|CUBIC|CUbe] -+- [QUANTITY] -+- <unit> -+->\n              '- <unit> = syntaxUnit [prefix] | prefix standardUnit -+  [PER <unit>] | [addSyntaxUnits|addStandardUnits]",
+    "examples": [
+      "100 METRE/s",
+      "50 KG",
+      "5'8\""
+    ],
+    "notes": "物理量子语法（数值 + 单位），存库用数据库单位、回显用用户显示单位。官方逐字（DRMPGC13.03.07，静态 1.1 分支全文抓取；docs.aveva.com Zoomin 云镜像 926161 返回搜索壳无正文）。铁路顶层次序：(1)必填 <value>；(2)可选 EXPON int 指数；(3)可选幂限定 SQUARE/CUBIC/CUBE；(4)可选 QUANTITY 关键字；(5)单位（syntaxUnit 带可选 prefix 或 prefix+standardUnit）；(6)可选复合尾 PER/addSyntaxUnits/addStandardUnits。逐字规则：'Initial standard units cannot be abbreviated if no secondary units follow.'；标准单位复合用点(.)相乘、斜杠(/)相除并带幂指数；prefix 与单位间无空格拼接（如 centilitre）；幂指数为 <9 整数可带 +/-；FINCH 混合英尺英寸用撇号(')。单位表 100+ 条含 MM/METRE/INCH/FEET/KG/POUND/LITRE/GALLON/DEGC/KELVIN/BAR/PASCAL/PSI/WATT/VOLT/AMPERE/HERTZ/DEG/RADIAN 及货币 GBP/USD/EURO。<gid> = 设计元素身份（DRMPGC13.03.08）；<marke> = D 设计点 P 点（DRMPGC13.03.09）；<expr> = 通用表达式（DRMPGC13.03.05）。附录④.spec。",
+    "manualRef": "DRMPGC13.03.07",
+    "confidence": "official-verbatim",
+    "aliases": []
+  },
+  {
+    "id": "e3d-cmd-railroad-legend",
+    "command": "<铁路记号图例>",
+    "category": "coordinate",
+    "syntax": "Mixed-case word   = 可缩写命令；大写=最小缩写（如 CONnect → CON..CONNECT）\nlowercase italics = 命令参数（你提供的值）\n<lowercase>       = 子语法图引用\n+                 = 选项汇合：任取一支或默认(RETURN)\n*                 = 回跳节点：可重复该选项任意组合\n>-  ... ->        = 铁路主线（图的进出口）",
+    "examples": [
+      "CONnect 可键入 CON/CONN/CONNE/CONNEC/CONNECT",
+      "选项汇合(+)：选 ABC 或 PQR 或子图，或 RETURN 取默认",
+      "回跳(*)：option1/option2/option3 可任意组合重复"
+    ],
+    "notes": "AVEVA 命令语法图（铁路图）记号图例。官方逐字（QRM4.4.01 'Command Syntax'，1.1 静态页；CSRM2.03.3 'Syntax Diagrams' 同规约）。此图例用于解码本数据集/手册所有命令 syntax 字段里的 >- / + / * / <小写> / 大写缩写记号，跨 QRM/CSRM/DRMPGC 各手册通用。返回: N/A（记号说明，非命令）。附录④.control。",
+    "manualRef": "QRM4.4.01",
+    "confidence": "official-verbatim",
+    "aliases": []
+  },
+  {
+    "id": "e3d-cmd-new",
+    "command": "NEW",
+    "category": "modeling",
+    "syntax": "NEW <element_type> [ <element_name> ] [ BEFore|AFTer <list_position> ] [ DB <team>/<database> ]  ；内联选型：NEW <component> ( SELect WIth ... | CHOOSE WITH ... ) ；定位克隆：NEW <type> COPY PREV BY <dir> <dist> | AT <bpos> | <positioning_attr> <value>",
+    "examples": [
+      "NEW TEE /TEE2",
+      "NEW TEE AFTER /ELBO3",
+      "NEW TEE BEFORE 8",
+      "NEW TEE BEFORE FLAN 2",
+      "NEW TEE AFTER LAST ELBO",
+      "NEW SITE /MYSITE DB MYTEAM/MYDB",
+      "NEW ELBO SEL WITH STYP LR",
+      "NEW TEE SEL WI PBOR 3 150",
+      "NEW REDU CHOOSE WITH ABOR 100 LBOR 80",
+      "NEW PNOD /PNOD2 COPY PREV BY E1000"
+    ],
+    "notes": "通用元素创建的权威铁路图在 DBRM4.05.3（不在 DRMPGC）：NEW <element_type> [<element_name>] [BEFore|AFTer <list_position>] [DB <team>/<database>]。<list_position> 可为 名字/refno、裸序号(8)、类型+序号(FLAN 2)、FIRST/LAST <type>、NEXT n。不给列表位则插在当前列表位之后；CE 须处于能合法拥有目标类型的层级。管件内联选型 SELect(DRMPCM24.09.13)/CHOOSE(DRMPCM24.09.12)；定位式 COPY PREV BY/AT/<attr> 见 DRMPCM26.11.02。附录③.1。",
+    "manualRef": "DBRM4.05.3",
+    "confidence": "official-verbatim",
+    "aliases": []
+  },
+  {
+    "id": "e3d-cmd-choose",
+    "command": "CHOOSE",
+    "category": "spec",
+    "syntax": ">- CHOOse -+- AUTOConnect ON/OFF | FORCEConnect ON/OFF | SPec <gid> | DEFault | (RTEX|STEX|TTEX|XTEX|YTEX|ZTEX|TEXT|ALL) | WITH *( <wivl> | <wiwor> )",
+    "examples": [
+      "CHOOSE DEFAULT",
+      "CHOOSE ALL",
+      "CHOOSE SPEC /RF150",
+      "CHOOSE FORCECONNECT OFF",
+      "CHOOSE AUTOCONNECT OFF",
+      "CHOOSE WITH PBOR 3 150"
+    ],
+    "notes": "从规格显示列表选型（仅 DEV GRAPHICS 模式）。<wivl>=PBOre integer|ANgle|RAdius|ABOre|LBOre|PREssure|TEMperature|RATing <uval>；<wiwor>=STYpe|TYpe|ACOnn|LCOnn word|PCOnn integer word|word value|word word。CHOOSE DEFAULT 选规格默认项；CHOOSE ALL 合并 CHOOSE+TEXT。默认态为 CHOOSE FORCECONNECT ON。规格层级须第一级含 TYPE 问题、第二级含 PBOR 或 BORE，否则报错。",
+    "manualRef": "DRMPGC24.09.12",
+    "confidence": "official-verbatim",
+    "aliases": [
+      "CHOOse"
+    ]
+  },
+  {
+    "id": "e3d-cmd-select",
+    "command": "SELECT",
+    "category": "spec",
+    "syntax": ">- SElect WIth *( SPec <gid> | <wivl> | <wiwor> )",
+    "examples": [
+      "SELECT",
+      "SEL WI STYPE BALL",
+      "SEL WI STYPE ECC PBOR 2 50",
+      "SEL WI ANGLE 45",
+      "SEL WI LBOR 50"
+    ],
+    "notes": "从 Branch 规格选默认组件及其 Leave Tube。SELECT 单独 = 取默认。SELECT 后自动更新 ANGLE/RADIUS/SHOP（及指定的 HEIGHT）。默认信息来源：SPEC←Branch.PSPE，ARRIVE BORE←上一元素 Leave bore，TEMP/PRES←Branch。",
+    "manualRef": "DRMPGC24.09.14",
+    "confidence": "official-verbatim",
+    "aliases": [
+      "SEl",
+      "SElect"
+    ]
+  },
+  {
+    "id": "e3d-cmd-hpos",
+    "command": "HPOS",
+    "category": "positioning",
+    "syntax": ">- HPos <bpos>",
+    "examples": [
+      "HPOS E10 N5 U5",
+      "HPOS E1000 N2000 U500"
+    ],
+    "notes": "设分支头（Head）位置，坐标默认在 owner 坐标系（可带 WRT/IN <gid>）。CE 在 BRANCH 直接发。自由空间头尾属性，DRMPGC24.09.06。",
+    "manualRef": "DRMPGC24.09.06",
+    "confidence": "official-verbatim",
+    "aliases": [
+      "HPos"
+    ]
+  },
+  {
+    "id": "e3d-cmd-tpos",
+    "command": "TPOS",
+    "category": "positioning",
+    "syntax": ">- TPos <bpos>",
+    "examples": [
+      "TPOS E5000 N2000 U1500"
+    ],
+    "notes": "设分支尾（Tail）位置。CE 在 BRANCH 直接发。自由空间头尾属性，DRMPGC24.09.06。",
+    "manualRef": "DRMPGC24.09.06",
+    "confidence": "official-verbatim",
+    "aliases": [
+      "TPos"
+    ]
+  },
+  {
+    "id": "e3d-cmd-hdir",
+    "command": "HDIR",
+    "category": "direction",
+    "syntax": ">- HDir <bdir>",
+    "examples": [
+      "HDIR N WRT WORLD",
+      "HDIR E"
+    ],
+    "notes": "设分支头方向。单方向词 N/S/E/W/U/D 或复合方向。自由空间头尾属性，DRMPGC24.09.06。",
+    "manualRef": "DRMPGC24.09.06",
+    "confidence": "official-verbatim",
+    "aliases": [
+      "HDir"
+    ]
+  },
+  {
+    "id": "e3d-cmd-tdir",
+    "command": "TDIR",
+    "category": "direction",
+    "syntax": ">- TDir <bdir>",
+    "examples": [
+      "TDIR W"
+    ],
+    "notes": "设分支尾方向。单方向词 N/S/E/W/U/D 或复合方向。自由空间头尾属性，DRMPGC24.09.06。",
+    "manualRef": "DRMPGC24.09.06",
+    "confidence": "official-verbatim",
+    "aliases": [
+      "TDir"
+    ]
+  },
+  {
+    "id": "e3d-cmd-hbore",
+    "command": "HBORE",
+    "category": "positioning",
+    "syntax": ">- HBOre <uval>",
+    "examples": [
+      "HBOR 80"
+    ],
+    "notes": "设分支头孔径（bore）。自由空间头尾属性，DRMPGC24.09.06。",
+    "manualRef": "DRMPGC24.09.06",
+    "confidence": "official-verbatim",
+    "aliases": [
+      "HBOre"
+    ]
+  },
+  {
+    "id": "e3d-cmd-tbore",
+    "command": "TBORE",
+    "category": "positioning",
+    "syntax": ">- TBore <uval>",
+    "examples": [
+      "TBOR 80"
+    ],
+    "notes": "设分支尾孔径（bore）。自由空间头尾属性，DRMPGC24.09.06。",
+    "manualRef": "DRMPGC24.09.06",
+    "confidence": "official-verbatim",
+    "aliases": [
+      "TBore"
+    ]
+  },
+  {
+    "id": "e3d-cmd-hconn",
+    "command": "HCONN",
+    "category": "positioning",
+    "syntax": ">- HCOnn word",
+    "examples": [
+      "HCON OPEN"
+    ],
+    "notes": "设分支头连接类型。自由端 HCONN 必须为 OPEN / CLOS / VENT / DRAN / NULL 之一，否则数据一致性报错（DRMPGC24.09.06 官方注释）。",
+    "manualRef": "DRMPGC24.09.06",
+    "confidence": "official-verbatim",
+    "aliases": [
+      "HCOnn"
+    ]
+  },
+  {
+    "id": "e3d-cmd-tconn",
+    "command": "TCONN",
+    "category": "positioning",
+    "syntax": ">- TCOnn word",
+    "examples": [
+      "TCON OPEN"
+    ],
+    "notes": "设分支尾连接类型。自由端 TCONN 必须为 OPEN / CLOS / VENT / DRAN / NULL 之一，否则数据一致性报错（DRMPGC24.09.06 官方注释）。",
+    "manualRef": "DRMPGC24.09.06",
+    "confidence": "official-verbatim",
+    "aliases": [
+      "TCOnn"
+    ]
+  },
+  {
+    "id": "e3d-cmd-href",
+    "command": "HREF",
+    "category": "positioning",
+    "syntax": ">- HRef <gid> [HEAD | TAIL | (空)] | HRef NULREF",
+    "examples": [
+      "HREF NULREF",
+      "HREF /PIPE2 HEAD"
+    ],
+    "notes": "设本元素头连接引用属性（指向目标元素并回设目标的连接引用指回本元素）。HREF NULREF 断开头连接。通常由 CONNECT 自动设置。",
+    "manualRef": "DRMPGC24.09.05",
+    "confidence": "official-verbatim",
+    "aliases": [
+      "HRef"
+    ]
+  },
+  {
+    "id": "e3d-cmd-tref",
+    "command": "TREF",
+    "category": "positioning",
+    "syntax": ">- TRef <gid> [HEAD | TAIL | (空)] | TRef NULREF",
+    "examples": [
+      "TREF /PIPE2 HEAD",
+      "TREF NULREF"
+    ],
+    "notes": "设本元素尾连接引用属性（指向目标元素头，并回设目标 HREF 指回本元素）。TREF NULREF 断开尾连接。通常由 CONNECT 自动设置。",
+    "manualRef": "DRMPGC24.09.05",
+    "confidence": "official-verbatim",
+    "aliases": [
+      "TRef"
+    ]
+  },
+  {
+    "id": "e3d-cmd-move",
+    "command": "MOVE",
+    "category": "editing",
+    "syntax": ">- MOVe -+- PHead|HHead|PTail|HTail -+- BY <pos> [WRT|IN <gid>] | DISTance <uval>",
+    "examples": [
+      "MOVE PT DIST -2000",
+      "MOVE PT BY E2000 S500"
+    ],
+    "notes": "移动头尾点。MOVE PT DIST -2000 沿 PT 反向移 2000。DRMPGC24.09.09。",
+    "manualRef": "DRMPGC24.09.09",
+    "confidence": "official-verbatim",
+    "aliases": [
+      "MOVe"
+    ]
+  },
+  {
+    "id": "e3d-cmd-bop",
+    "command": "BOP",
+    "category": "positioning",
+    "syntax": ">- BOP <uval> -+- FROm|TO <bpos> | INFront|BEHind|ONTop|UNDer -+- <gid>|<marke>|<bpos>",
+    "examples": [
+      "BOP ONTO /BEAM",
+      "BOP 0 ONTOP /BEAM"
+    ],
+    "notes": "按管底（Bottom Of Pipe）定位头尾。BOP ONTO /BEAM = 管底压梁顶，间隙 0。DRMPGC24.09.08。",
+    "manualRef": "DRMPGC24.09.08",
+    "confidence": "official-verbatim",
+    "aliases": []
+  },
+  {
+    "id": "e3d-cmd-top",
+    "command": "TOP",
+    "category": "positioning",
+    "syntax": ">- TOP <uval> -+- FROm|TO <bpos> | INFront|BEHind|ONTop|UNDer -+- <gid>|<marke>|<bpos>",
+    "examples": [
+      "TOP UNDER U3000"
+    ],
+    "notes": "按管顶（Top Of Pipe）定位头尾。DRMPGC24.09.08。",
+    "manualRef": "DRMPGC24.09.08",
+    "confidence": "official-verbatim",
+    "aliases": []
+  },
+  {
+    "id": "e3d-cmd-position-distance",
+    "command": "POSITION",
+    "category": "positioning",
+    "syntax": ">- POSition <marke> DISTance <uval>",
+    "examples": [
+      "DIST 1000",
+      "POS PA DIST 1000"
+    ],
+    "notes": "相对上一元件定位：沿约束中心线距上一元件原点指定距离。DIST 1000 = 沿约束中心线距上一元件原点 1000；POS PA DIST 1000 用本元件 Arrive 点。DRMPGC24.09.44。",
+    "manualRef": "DRMPGC24.09.44",
+    "confidence": "official-verbatim",
+    "aliases": [
+      "POS",
+      "POSition"
+    ]
+  },
+  {
+    "id": "e3d-cmd-distance",
+    "command": "DISTANCE",
+    "category": "positioning",
+    "syntax": ">- [POSition <marke>] DISTance <uval>",
+    "examples": [
+      "DIST 1000",
+      "POS PA DIST 1000"
+    ],
+    "notes": "沿约束中心线距上一元件原点定位。属 POSITION ... DISTANCE 定位族（DRMPGC24.09.44）。注意：不要用裸 Dist 数值随意定位，优先用 THRO 族 + CONN 族（见附录裁决）。",
+    "manualRef": "DRMPGC24.09.44",
+    "confidence": "official-verbatim",
+    "aliases": [
+      "DIST",
+      "DISTance"
+    ]
+  },
+  {
+    "id": "e3d-cmd-through",
+    "command": "THROUGH",
+    "category": "positioning",
+    "syntax": ">- POSition <marke> THRough <bpos>",
+    "examples": [
+      "POS THR /TANK5",
+      "POS PA THR E3000",
+      "THR @",
+      "THRO PH",
+      "THRO PT",
+      "THRO PREV"
+    ],
+    "notes": "穿越交点定位：元件穿过指定点/元素。参考平面垂直于约束中心线。THRO PH/PT = 元件穿过分支头/尾位置；THRO PREV = 穿过上一元件的点。DRMPGC24.09.45。",
+    "manualRef": "DRMPGC24.09.45",
+    "confidence": "official-verbatim",
+    "aliases": [
+      "THR",
+      "THRO",
+      "THRough"
+    ]
+  },
+  {
+    "id": "e3d-cmd-connect-branch",
+    "command": "CONNECT",
+    "category": "positioning",
+    "syntax": ">- CONnect <marke> TO -+- <marke> | <gid>",
+    "examples": [
+      "CONN PH TO /1205-N5",
+      "CONN PT TO LAST MEM",
+      "CONN PT TO /100-A8/T2",
+      "CONN PT TO P4 OF /VF205",
+      "CONN PH TO PT OF /100-A8/1",
+      "CONN PH TO ID NOZZ@",
+      "CONN PH TO FIR MEM",
+      "CONN PT TO LAS MEM"
+    ],
+    "notes": "Branch/Hanger 层级头尾连接：设 HBOR/HCON/HPOS/HDIR 并互设 CREF/HREF。CONN PH TO /Nozzle 接管嘴；CONN PT TO LAST MEM 接最后组件 Leave 点（忽略 Attachment）。前提：给 CONNECT 前必须先设 Branch 规格（PSPE）；连接只读库元素会自动生成 Inter-DB 连接宏。DRMPGC24.09.04。",
+    "manualRef": "DRMPGC24.09.04",
+    "confidence": "official-verbatim",
+    "aliases": [
+      "CON",
+      "CONN",
+      "CONnect"
+    ]
+  },
+  {
+    "id": "e3d-cmd-connect-component",
+    "command": "CONNECT",
+    "category": "positioning",
+    "syntax": ">- CONnect [<marke>] [TO NEXT|TO <marke>] [AND <bdir> IS <bdir>]",
+    "examples": [
+      "CONNECT",
+      "CONNECT TO NEXT",
+      "CONNECT AND P3 IS U"
+    ],
+    "notes": "Component 层级连接：P 点贴面，本元件 Arrive 接上一元件 Leave。bore/conn 不兼容时自动 FLIP 重试；相邻若为 ATTA 点则跳过。DRMPGC24.09.38。（与 Branch 层级 CONNECT 语义不同，见 DRMPGC24.09.04。）",
+    "manualRef": "DRMPGC24.09.38",
+    "confidence": "official-verbatim",
+    "aliases": [
+      "CON",
+      "CONN",
+      "CONnect"
+    ]
+  },
+  {
+    "id": "e3d-cmd-fconn",
+    "command": "FCONN",
+    "category": "positioning",
+    "syntax": ">- FCONnect [<marke>] [TO <marke>] [AND <bdir> IS <bdir>]",
+    "examples": [
+      "FCONN",
+      "FCONN TO TAIL",
+      "FCONN AND P3 IS U"
+    ],
+    "notes": "强制连接：忽略 bore/conn 兼容性（数据检查仍会报不兼容）。慎用。DRMPGC24.09.39。",
+    "manualRef": "DRMPGC24.09.39",
+    "confidence": "official-verbatim",
+    "aliases": [
+      "FCON",
+      "FCONnect"
+    ]
+  },
+  {
+    "id": "e3d-cmd-direction",
+    "command": "DIRECTION",
+    "category": "direction",
+    "syntax": ">- DIRection [AND <marke> IS] <bdir>",
+    "examples": [
+      "DIR E",
+      "DIR AND P3 IS U45E",
+      "DIR N 45 E"
+    ],
+    "notes": "变向组件：把 Leave 点指向指定方向，变角组件自动调 ANGLE（受 Catalogue 控制）。与 ORI 区别：DIR 会自动调整变角组件的 ANGLE。社区常见 DIR TOW NEXT（TOW NEXT 未在官方页出现，待复核）。DRMPGC24.09.37。",
+    "manualRef": "DRMPGC24.09.37",
+    "confidence": "official-verbatim",
+    "aliases": [
+      "DIR",
+      "DIRection"
+    ]
+  },
+  {
+    "id": "e3d-cmd-orientate",
+    "command": "ORIENTATE",
+    "category": "direction",
+    "syntax": ">- ORIentate -+- <bdir> IS <bdir> | AND <bdir> IS <bdir>",
+    "examples": [
+      "ORI",
+      "ORI AND P3 IS U"
+    ],
+    "notes": "组件定向：ORI = Arrive 反向对准上一元件 Leave；ORI AND P3 IS U = 非同心件的离线 P 点朝上。ORI 不会为迁就斜向离线方向而改变变角组件的 ANGLE/RADIUS。DRMPGC24.09.36。",
+    "manualRef": "DRMPGC24.09.36",
+    "confidence": "official-verbatim",
+    "aliases": [
+      "ORI",
+      "ORIentate"
+    ]
+  },
+  {
+    "id": "e3d-cmd-flip",
+    "command": "FLIP",
+    "category": "direction",
+    "syntax": ">-- FLIP -->\n\nQuery:\n>-- Query --+-- ARrive --.\n            |            |\n            '-- LEave ---+-->",
+    "examples": [
+      "FLIP",
+      "NEW REDU FLIP SELECT WITH LBORE 100"
+    ],
+    "notes": "两种官方语境：①管件 FLIP（DRMPCM24.09.25）互换某 Component 的 ARRIVE/LEAVE p-point 号，与 FORWARDS/BACKWARDS 模式耦合（决定 REDU 是否需 FLIP）；②钢结构 Section FLIP（DRMPCM26.11.29）无参数，互换 POSS↔POSE/DRNS↔DRNE/JOIS↔JOIE 三对起止属性、等效反转朝向。附录③.3/③.4。",
+    "manualRef": "DRMPCM24.09.25",
+    "confidence": "official-verbatim",
+    "aliases": []
+  },
+  {
+    "id": "e3d-cmd-forwards",
+    "command": "FORWARDS",
+    "category": "control-flow",
+    "syntax": "FORWARDS（缩写 FORW）",
+    "examples": [
+      "FORWARDS",
+      "FORW"
+    ],
+    "notes": "顺流向建模方向模式：修改轴在组件 Arrive。DRMPGC24.09.40 官方明确：'All the examples assume Forwards routing mode ... if Backwards is being used, then the effect of each command will be logically reversed.' 命令行独立铁路图来自 TM-1810 训练手册与社区命令表，官方独立命令铁路图本轮未抓到，待真机复核。",
+    "manualRef": "DRMPGC24.09.40",
+    "confidence": "community",
+    "aliases": [
+      "FORW"
+    ]
+  },
+  {
+    "id": "e3d-cmd-backwards",
+    "command": "BACKWARDS",
+    "category": "control-flow",
+    "syntax": "BACKWARDS（缩写 BACK）",
+    "examples": [
+      "BACKWARDS",
+      "BACK"
+    ],
+    "notes": "逆流向建模方向模式：修改轴在 Leave，Next↔Previous 互换，各命令效果逻辑反转（DRMPGC24.09.40 官方确认行为）。命令行独立铁路图来自 TM-1810 训练手册与社区命令表，官方独立命令铁路图本轮未抓到，待真机复核。",
+    "manualRef": "DRMPGC24.09.40",
+    "confidence": "community",
+    "aliases": [
+      "BACK"
+    ]
+  },
+  {
+    "id": "e3d-cmd-pspec",
+    "command": "PSPEC",
+    "category": "spec",
+    "syntax": ">- PSPEcification name",
+    "examples": [
+      "PSPEC /A35B8",
+      "PSPEC /A15A2"
+    ],
+    "notes": "分支/管道规格（Piping Spec）。PSPEC /A35B8 在 Pipe 级级联给所有后建 Branch；Branch 级单设。PSPE 控制后续所有组件选型。规格名必须当前可用。注意：不是 SET SPREF，生产代码把 SPREF/PSPEC 请求统一路由到 Pspec。DRMPGC24.09.03。",
+    "manualRef": "DRMPGC24.09.03",
+    "confidence": "official-verbatim",
+    "aliases": [
+      "PSPE",
+      "PSPEC",
+      "PSPEcification",
+      "HSPE"
+    ]
+  },
+  {
+    "id": "e3d-cmd-ispec",
+    "command": "ISPEC",
+    "category": "spec",
+    "syntax": "ISPEC /等级名 | ISPEC NULREF | Q ISPEC",
+    "examples": [
+      "ISPEC /INS-A",
+      "ISPEC NULREF",
+      "Q ISPEC"
+    ],
+    "notes": "绝缘（保温）规格。官方逐字（DRMPCM24.09.22 Standard Component Attributes）：ISPEC 'points to an Insulation Specification. The Branch \"TEMPERATURE\" attribute is automatically used to determine an insulation thickness from this Specification.'——引用属性，同族 SPREF/TSPEC。设置形态 'ISpec <ref>'（同 SPREF 模式）。Q ISPEC 返回当前元素/分支所指绝缘规格引用。⚠ 交互查询/清除动词 'Q ISPEC' / 'ISPEC NULREF' 仍为社区用例（官方文档记的是属性与其引用设置形态，非逐字 Q 铁路图），待真机复核。P&ID 中性平文件里 'ISPEC insulation_spec'（官方 PDUV14.5.2）是导入文件字段，非交互命令语法。返回: 绝缘规格引用（据 Branch TEMPERATURE 派生保温厚度）。附录④.spec。",
+    "manualRef": "DRMPCM24.09.22",
+    "confidence": "official-verbatim",
+    "aliases": [
+      "ISPE",
+      "ISPEC"
+    ]
+  },
+  {
+    "id": "e3d-cmd-tspec",
+    "command": "TSPEC",
+    "category": "spec",
+    "syntax": "TSPEC /等级名 | Q TSPEC",
+    "examples": [
+      "TSPEC /TRACE-A"
+    ],
+    "notes": "伴热（示踪）规格。官方逐字（DRMPCM24.09.22 Standard Component Attributes）：TSPEC 'points to a dummy Tracing Specification and is used by ISODRAFT to indicate trace heating requirements.'——引用属性，同族 SPREF/ISPEC。设置形态 'TSpec <ref>'。⚠ 交互查询动词 'Q TSPEC' 仍为社区用例，待真机复核。P&ID 中性平文件里 'TSPEC tracing_spec'（官方 PDUV14.5.2）是导入文件字段，非交互命令语法。返回: 伴热规格引用（供 ISODRAFT 在等轴图上标示伴热要求）。附录④.spec。",
+    "manualRef": "DRMPCM24.09.22",
+    "confidence": "official-verbatim",
+    "aliases": [
+      "TSPE",
+      "TSPEC"
+    ]
+  },
+  {
+    "id": "e3d-cmd-spref",
+    "command": "SPREF",
+    "category": "spec",
+    "syntax": ">-- SPRef name -->   （设置形态，官方页以平文本流呈现）| Q SPREF",
+    "examples": [
+      "SPREF /SPEC208/EL50BW",
+      "Q SPREF"
+    ],
+    "notes": "组件规格引用（Specification Reference）。官方逐字（DRMPCM24.09.26 + DRMPCM24.09.22）：SPREF 'points to a Specification Component that provides the complete Catalogue description of the current element.'；'This attribute is usually inserted automatically as a direct result of the CHOOSE (or SELECT) command. It can, however, be set directly to the name of the required Specification Component.'；'If the SPREF is not set, a Valve, for example, is merely a hierarchical element and has no geometry.' 设置形态 'SPRef name'（缩写 SPRE），例 /SPEC208/EL50BW。生产建模请求统一路由到 PSPEC（真机闭环存活），不是 SET SPREF。⚠ 交互 'Q SPREF' 查询动词形态为社区用例。返回: 本元素所指规格组件的名字/引用（未设=无几何）。附录④.spec。",
+    "manualRef": "DRMPCM24.09.26",
+    "confidence": "official-verbatim",
+    "aliases": [
+      "SPRE",
+      "SPREF"
+    ]
+  },
+  {
+    "id": "e3d-cmd-rotate",
+    "command": "ROTATE",
+    "category": "editing",
+    "syntax": ">- ROTate ABOut <bdir> [THRough <bpos>] BY -+- <uval> | <bdir> TOwards <bdir>  或 ... AND <bdir> IS <bdir>",
+    "examples": [
+      "ROTATE BY -45",
+      "ROTATE BY 45 ABOUT E",
+      "ROTATE ABOUT E BY 45",
+      "ROT THRO P3 ABOUT S BY -25",
+      "ROTATE AND Y IS N45W25D",
+      "ROT BY 90 ABOUT Z THRO ID@"
+    ],
+    "notes": "重定向：绕给定轴/过给定点/指定量/指定朝向四种变体。ROTATE BY -45 绕 Z 轴，负角=逆时针。关键字：ROTATE BY ABOUT THROUGH AND。DRMPGC23.08.13 含完整四组铁路图。",
+    "manualRef": "DRMPGC23.08.13",
+    "confidence": "official-verbatim",
+    "aliases": [
+      "ROT",
+      "ROTate"
+    ]
+  },
+  {
+    "id": "e3d-cmd-position-at",
+    "command": "POSITION",
+    "category": "positioning",
+    "syntax": ">- POSition <marke> AT <bpos>",
+    "examples": [
+      "AT E3' N4'6 U1'",
+      "AT IDP@",
+      "AT@",
+      "POS PIN5 AT E3000"
+    ],
+    "notes": "坐标定位（绝对）：把指定 P 点定位到指定坐标。查询：Q POS [<bpos>] [WRT|IN <gid>]、Q POS IN SITE、Q POS IDP@。DRMPGC23.08.08。",
+    "manualRef": "DRMPGC23.08.08",
+    "confidence": "official-verbatim",
+    "aliases": [
+      "POS",
+      "POSition",
+      "AT"
+    ]
+  },
+  {
+    "id": "e3d-cmd-by",
+    "command": "BY",
+    "category": "editing",
+    "syntax": ">- BY <pos> [<axes>]",
+    "examples": [
+      "BY E300 N400",
+      "BY E3000 WRT SITE",
+      "BY U 500",
+      "BY D 500",
+      "BY E 500",
+      "BY N 500"
+    ],
+    "notes": "沿轴平移当前元素。BY U 500 等社区高频形态与官方 <pos> 语法一致。DRMPGC23.08.16。",
+    "manualRef": "DRMPGC23.08.16",
+    "confidence": "official-verbatim",
+    "aliases": []
+  },
+  {
+    "id": "e3d-cmd-delete",
+    "command": "DELETE",
+    "category": "editing",
+    "syntax": "DELETE element_type\nDELETE element_type MEMbers\nDELETE element_type MEMbers integer\nDELETE element_type MEMbers integer TO integer",
+    "examples": [
+      "DELETE NOZZ",
+      "DELETE ZONE",
+      "DELETE BRAN MEMBERS",
+      "DELETE BRAN MEMBER 6",
+      "DELETE BRAN MEMBERS 5 TO 7"
+    ],
+    "notes": "删除 CE 及其全部子件（不可逆）。安全：命令词须输全、须确认 CE 的通用类型(element_type)；删后 Owner 变新 CE。MEMbers integer 删单个成员，MEMbers integer TO integer 删范围。DBRM4.05.4。附录③.2。",
+    "manualRef": "DBRM4.05.4",
+    "confidence": "official-verbatim",
+    "aliases": [
+      "DEL",
+      "DELE",
+      "DELETE"
+    ]
+  },
+  {
+    "id": "e3d-cmd-rename",
+    "command": "RENAME",
+    "category": "editing",
+    "syntax": "<COPY-command> REName old_name new_name  （无独立 RENAME 命令页；改名靠设 NAME 属性）",
+    "examples": [
+      "COPY /FRACT1/PIPE RENAME /FRACT1 /FRACT2"
+    ],
+    "notes": "RENAME 只作为 COPY 命令的可选尾缀存在（DBRM4.05.6），复制时把 old_name 子串替换为 new_name，解决 NAME 唯一性冲突。DBRM 4.5.x 无独立 RENAME/NAME 命令页；要直接改现有元素名须设其 NAME 属性（社区 `NAME /newname` 未从官方静态页逐字确认，标 not-found）。附录③.2/③.10。",
+    "manualRef": "DBRM4.05.6",
+    "confidence": "official-verbatim",
+    "aliases": [
+      "REN",
+      "RENAME"
+    ]
+  },
+  {
+    "id": "e3d-cmd-copy",
+    "command": "COPY",
+    "category": "editing",
+    "syntax": "COPY <element_id> | COPY MEMbers OF <element_id> | COPY MEMbers <int> TO <int> OF <element_id> | COPY ATTributes OF <element_id> | COPY LIKE <element_id> | COPY ADJ/ACENT <select> [ REName <old_name> <new_name> ] ；定位式：NEW <type> COPY PREV BY <dir> <dist>",
+    "examples": [
+      "NEW EQUI /EQUIPB",
+      "COPY /EQUIPA",
+      "NEW BRAN /SIDEARM",
+      "COPY MEMBERS 12 TO 20 OF /MAINLINE",
+      "COPY ATTRIBUTES OF /EQUIPA",
+      "COPY LIKE /EQUIPA",
+      "COPY /FRACT1/PIPE RENAME /FRACT1 /FRACT2",
+      "NEW BRA COPY PREV BY E 100"
+    ],
+    "notes": "E3D 元素克隆惯用法：NEW 建空目标、COPY 填充。COPY <id> 克隆全部属性+全部子件（除 NAME 唯一/LOCK 恒解锁，CE 须无成员）；COPY ATT OF 除 DESI 引用与 OWNER 全复制；COPY LIKE 再额外跳过位置/方向/朝向/角度。REName 尾缀在复制时把 old_name 子串换 new_name。与定位式 COPY PREV BY（相对上一元素按方向+距离位移）区分。DBRM4.05.6 / DRMPCM26.11.02。附录③.1。",
+    "manualRef": "DBRM4.05.6",
+    "confidence": "official-verbatim",
+    "aliases": [
+      "COPY",
+      "COPY PREV"
+    ]
+  },
+  {
+    "id": "e3d-cmd-include",
+    "command": "INCLUDE",
+    "category": "editing",
+    "syntax": "INCLude element_id\nINCLude element_id BEFore list_position\nINCLude element_id AFTer list_position",
+    "examples": [
+      "INCLUDE /PIPE2"
+    ],
+    "notes": "把一个已存在元素并入 CE 的成员表，归属权转移到 CE（如 /PIPE2 归属从 /ZONE2 转到 /ZONE1）。可选 BEFore/AFTer list_position 控制成员表位置。同页兄弟命令 REOrder。最小缩写 INCL/BEF/AFT。DBRM4.05.5（层级重组）。附录③.2。",
+    "manualRef": "DBRM4.05.5",
+    "confidence": "official-verbatim",
+    "aliases": [
+      "INCL",
+      "INCLUDE"
+    ]
+  },
+  {
+    "id": "e3d-cmd-exclude",
+    "command": "EXCLUDE",
+    "category": "editing",
+    "syntax": "<COLLECT-query> EXCLUDE element_type gid OF element_id",
+    "examples": [
+      "VAR !BRANCH COLLECT ALL BRANCH MEMBERS FOR /PIPE1 /PIPE2 EXCLUDE BRAN 1 OF /PIPE2"
+    ],
+    "notes": "EXCLUDE 不是独立元素编辑命令，只是 COLLECT 收集查询里的过滤限定词（DBRM 第 11 章 Collections），把指定元素排除出收集集，对 DB/CE 无写入（只影响内存集合/变量结果）。附录③.2。",
+    "manualRef": "DBRM11",
+    "confidence": "official-verbatim",
+    "aliases": [
+      "EXCLUDE"
+    ]
+  },
+  {
+    "id": "e3d-cmd-mirror",
+    "command": "MIRROR",
+    "category": "editing",
+    "syntax": ">-- MIRRor -- <plane> -->",
+    "examples": [
+      "MIRROR PLANE E45D THRO /TANK5"
+    ],
+    "notes": "平面反射（镜像）。官方逐字（DRMPCM23.08.32 'Reflecting a Position in a Plane (Mirroring)'，1.1 静态页全文抓取）：把当前元素(CE)移到'反射其初始位置于指定平面'算得的新位置，保持右手系朝向。顶层铁路 '>-- MIRRor -- <plane> -->'，唯一官方例 'MIRROR PLANE E45D THRO /TANK5'（在过 /TANK5、方向 E45D 的平面内反射 CE 位置）。<plane> = PLAne <bdir> [THRough <bpos> | DISTance <uval> | CLEArance <uval>]（<plane> 分支子语法被 markdown 转换弄糊，仅顶层行+例逐字可信）。缩写 MIRR。⚠ 与结构/GUI 'MI/Mirror' 工具、'Copy Mirror' 装配工具是不同特性。返回: 无返回值，重定位 CE。附录④.editing。",
+    "manualRef": "DRMPCM23.08.32",
+    "confidence": "official-verbatim",
+    "aliases": [
+      "MIRR",
+      "MIRROR"
+    ]
+  },
+  {
+    "id": "e3d-cmd-clearance",
+    "command": "CLEARANCE",
+    "category": "positioning",
+    "syntax": ">- CLEArance <uval>",
+    "examples": [
+      "CLEA 500"
+    ],
+    "notes": "相对上一元件留间隙：考虑双方全几何，沿约束中心线留指定间隙。CLEA 500 留 500 间隙。查询：Q <marke> POSition|BOP|TOP [WRT|IN <gid>]。官方另有 24.09.54 组件两侧间隙、24.09.55 竖向间隙、24.09.56 Tube(BOP)间隙、24.09.57 综合间隙（目录确认）。DRMPGC24.09.53。",
+    "manualRef": "DRMPGC24.09.53",
+    "confidence": "official-verbatim",
+    "aliases": [
+      "CLEA",
+      "CLEArance"
+    ]
+  },
+  {
+    "id": "e3d-cmd-tube",
+    "command": "TUBE",
+    "category": "modeling",
+    "syntax": "隐含元素（无独立 NEW TUBE 命令），元素类型 = TUBI；集合中以 'IL TUB OF =<component>' 寻址",
+    "examples": [
+      "Q TUBE",
+      "IL TUB OF =20/302",
+      "IL TUB OF =20/303"
+    ],
+    "notes": "隐含管段（Leave Tube）由 SELECT/CHOOSE 自动选取；长度查询见 Q ITLE/ATLE。官方逐字（DBRM11 Collections）：隐含管的元素类型是 TUBI（TUBIng）——'If a selection contains elements of type TUBIng, then the collection describes it as the Leave Tube of an existing database element'，写作 'IL TUB OF =<component>'。它是分支中相邻两管件间的隐含管段、无独立 NEW 命令，其孔径/几何来自离开侧管件的 LSTUBE（LSROD 目录规格，见 LSTUBE 条）。可变长 Tube 属性见 DRMPCM24.09.27（目录确认）。⚠ 社区/训练补充：底层目录 TUBE 用单一轴向 P 点(PTAX)，PBOR=PARA 1，PDIS=0，隐含 TUBE 的 PARA 2 预留 0.0——目录编写细节，非可抓官方页。返回: 分支内隐含管段（TUBI 成员），加入障碍列表时随分支计入障碍。附录④.spec。",
+    "manualRef": "DBRM11",
+    "confidence": "official-verbatim",
+    "aliases": [
+      "TUbe",
+      "TUBI"
+    ]
+  },
+  {
+    "id": "e3d-cmd-lstube",
+    "command": "LSTUBE",
+    "category": "spec",
+    "syntax": "（引用属性，经 Q LSTUBE 查询）",
+    "examples": [
+      "Q LSTUBE"
+    ],
+    "notes": "离开侧管段规格（Leave-Side Tube spec）。官方逐字（DRMPCM24.09.22 Standard Component Attributes）：LSTUBE 'point to a Specification Component that provides the complete Catalogue LSROD description of the Tube emerging from the current element Leave Point.'——是隐含 TUBE 几何的规格侧搭档（见 TUBE/TUBI 条），控制离开管段的尺寸。返回: 给出离开侧 Tube 的 LSROD 目录描述的规格组件引用。附录④.spec。",
+    "manualRef": "DRMPCM24.09.22",
+    "confidence": "official-verbatim",
+    "aliases": [
+      "LSTU",
+      "LSTUBE"
+    ]
+  },
+  {
+    "id": "e3d-cmd-q-position",
+    "command": "Q POSITION",
+    "category": "query",
+    "syntax": "Q POSition [<bpos>] [WRT|IN <gid>]",
+    "examples": [
+      "Q POS",
+      "Q POS IN SITE",
+      "Q POS IDP@"
+    ],
+    "notes": "查询 CE 原点位置（owner 或指定坐标系）。DRMPGC23.08.08。",
+    "manualRef": "DRMPGC23.08.08",
+    "confidence": "official-verbatim",
+    "aliases": [
+      "Q POS"
+    ]
+  },
+  {
+    "id": "e3d-cmd-q-phead-htail",
+    "command": "Q PHEAD",
+    "category": "query",
+    "syntax": "Q PHead / HHead / PTail / HTail",
+    "examples": [
+      "Q PHEAD",
+      "Q HHEAD",
+      "Q PTAIL",
+      "Q HTAIL"
+    ],
+    "notes": "查询头尾位置/方向属性。DRMPGC24.09.04/06。",
+    "manualRef": "DRMPGC24.09.04",
+    "confidence": "official-verbatim",
+    "aliases": [
+      "Q PHead",
+      "Q HHead",
+      "Q PTail",
+      "Q HTail"
+    ]
+  },
+  {
+    "id": "e3d-cmd-q-hposition-tposition",
+    "command": "Q HPOSITION",
+    "category": "query",
+    "syntax": "Q HPosition / TPosition [WRT|IN <gid>]",
+    "examples": [
+      "Q HPOS",
+      "Q TPOS",
+      "Q HPOS WRT WORLD"
+    ],
+    "notes": "查询头/尾位置。DRMPGC24.09.04。",
+    "manualRef": "DRMPGC24.09.04",
+    "confidence": "official-verbatim",
+    "aliases": [
+      "Q HPos",
+      "Q TPos"
+    ]
+  },
+  {
+    "id": "e3d-cmd-q-direction",
+    "command": "Q DIRECTION",
+    "category": "query",
+    "syntax": "Q <marke> DIRection [WRT|IN <gid>]",
+    "examples": [
+      "Q PL",
+      "Q P3",
+      "Q PL DIRECTION WRT WORLD"
+    ],
+    "notes": "查询指定 P 点方向。DRMPGC24.09.36/37。",
+    "manualRef": "DRMPGC24.09.36",
+    "confidence": "official-verbatim",
+    "aliases": [
+      "Q DIR"
+    ]
+  },
+  {
+    "id": "e3d-cmd-q-marke-position",
+    "command": "Q PA POSITION",
+    "category": "query",
+    "syntax": "Q <marke> POSition [WRT|IN <gid>]",
+    "examples": [
+      "Q PA POS",
+      "Q PL POS WRT WORLD"
+    ],
+    "notes": "查询指定 P 点位置。DRMPGC24.09.38/44。",
+    "manualRef": "DRMPGC24.09.38",
+    "confidence": "official-verbatim",
+    "aliases": []
+  },
+  {
+    "id": "e3d-cmd-q-specification",
+    "command": "Q SPECIFICATION",
+    "category": "query",
+    "syntax": "Q SPECification <qspci>",
+    "examples": [
+      "Q SPEC PBOR 3",
+      "Q SPEC STYP"
+    ],
+    "notes": "查规格问题项当前取值。<qspci>=PBOre integer|ANgle|RAdius|ABOre|LBOre|PREssure|TEMperature|RATing|STYpe|TYpe|PCOnn integer|ACOnn|LCOnn|word。DRMPGC24.09.15。",
+    "manualRef": "DRMPGC24.09.15",
+    "confidence": "official-verbatim",
+    "aliases": [
+      "Q SPEC"
+    ]
+  },
+  {
+    "id": "e3d-cmd-q-spref-tube",
+    "command": "Q SPREF",
+    "category": "query",
+    "syntax": "Q SPRef / Q TUbe",
+    "examples": [
+      "Q SPREF",
+      "Q TUBE"
+    ],
+    "notes": "查规格引用（SPREF）/ Leave Tube。DRMPGC24.09.15。",
+    "manualRef": "DRMPGC24.09.15",
+    "confidence": "official-verbatim",
+    "aliases": [
+      "Q SPRE",
+      "Q TUBE"
+    ]
+  },
+  {
+    "id": "e3d-cmd-q-href-tref",
+    "command": "Q HREF",
+    "category": "query",
+    "syntax": "Q HREF / TREF",
+    "examples": [
+      "Q HREF",
+      "Q TREF"
+    ],
+    "notes": "查头/尾连接引用。DRMPGC24.09.05。",
+    "manualRef": "DRMPGC24.09.05",
+    "confidence": "official-verbatim",
+    "aliases": [
+      "Q TREF"
+    ]
+  },
+  {
+    "id": "e3d-cmd-q-ce-nav",
+    "command": "Q CE",
+    "category": "query",
+    "syntax": "Q CE / HEAd / BRANch / TAIl",
+    "examples": [
+      "Q CE",
+      "Q HEAD",
+      "Q BRANCH",
+      "Q TAIL"
+    ],
+    "notes": "查当前元素/头/分支/尾。DRMPGC24.09.05。",
+    "manualRef": "DRMPGC24.09.05",
+    "confidence": "official-verbatim",
+    "aliases": [
+      "Q HEAD",
+      "Q BRANCH",
+      "Q TAIL"
+    ]
+  },
+  {
+    "id": "e3d-cmd-q-bop-top",
+    "command": "Q BOP",
+    "category": "query",
+    "syntax": "Q <marke> BOP / TOP [WRT|IN <gid>]",
+    "examples": [
+      "Q PA BOP",
+      "Q PL TOP WRT WORLD"
+    ],
+    "notes": "查 P 点管底/管顶标高。DRMPGC24.09.53。",
+    "manualRef": "DRMPGC24.09.53",
+    "confidence": "official-verbatim",
+    "aliases": [
+      "Q TOP"
+    ]
+  },
+  {
+    "id": "e3d-cmd-q-att",
+    "command": "Q ATT",
+    "category": "query",
+    "syntax": "Q ATT / Q ATTRIBUTES",
+    "examples": [
+      "Q ATT",
+      "Q ATTRIBUTES"
+    ],
+    "notes": "列出 CE 全部属性（名 值 多行清单）。社区来源。别解析猜的格式：输出缩进/分隔符各版本有差异，用 Command.Result 直采原文再写解析。返回: 把当前元素完整属性清单(名=值对)转储到命令输出。⚠ 三轮定向重扒：官方逐字语法图在 docs.aveva.com 'Query Commands'(929318/912035) Zoomin JS 页抓不到，仍为社区 + 返回值说明，真机 $Q 为准。",
+    "manualRef": "",
+    "confidence": "community",
+    "aliases": [
+      "Q ATTRIBUTES"
+    ]
+  },
+  {
+    "id": "e3d-cmd-q-name-type-etc",
+    "command": "Q NAME",
+    "category": "query",
+    "syntax": "Q NAME / TYPE / OWN / MEM / REF",
+    "examples": [
+      "Q NAME",
+      "Q TYPE",
+      "Q OWN",
+      "Q MEM",
+      "Q REF"
+    ],
+    "notes": "查名/类型/属主/成员/引用号。社区来源，待 QRM 复核。返回: Q NAME=元素 NAME 字符串(可为 '/' 前缀层级名，未命名返回空)；Q TYPE=元素 TYPE 关键字(如 PIPE/BRAN/ELBO/EQUI/BOX)；Q OWN=属主(父)元素名或引用；Q MEM=直接成员(子元素)名/引用清单；Q REF=引用号。⚠ 三轮定向重扒：docs.aveva.com 'Query Commands' Zoomin JS 抓不到官方逐字，Q TYPE 社区证据最薄(仅相关 Q STYP 见于所抓列表)，真机 $Q 为准。",
+    "manualRef": "",
+    "confidence": "community",
+    "aliases": [
+      "Q TYPE",
+      "Q OWN",
+      "Q MEM",
+      "Q REF"
+    ]
+  },
+  {
+    "id": "e3d-cmd-q-ori",
+    "command": "Q ORI",
+    "category": "query",
+    "syntax": "Q ORI [ IN <coordsys> ] [ WRT <element>|/* ]",
+    "examples": [
+      "Q ORI",
+      "Q ORI WRT WORLD",
+      "Q ORI WRT /*"
+    ],
+    "notes": "查 CE 朝向。社区来源（查询动词形态）；ORIENTATION 属性定义本身官方逐字（DRMPGC 'Standard Component Attributes' DRMPCM24.09.22：'Component's orientation in Zone coordinates'）。返回: 朝向以方向轴表示，如 'Y is N and Z is U'(owner 坐标) 或 'WRT /*'(世界坐标)——是方向/轴记号，非数值角度。⚠ 三轮定向重扒：'WRT /*'=世界限定为社区确认；Q ORI 动词逐字图 Zoomin JS 抓不到，真机为准。",
+    "manualRef": "",
+    "confidence": "community",
+    "aliases": []
+  },
+  {
+    "id": "e3d-cmd-q-bore",
+    "command": "Q BORE",
+    "category": "query",
+    "syntax": "Q HBORE / TBORE / ABORE / LBORE / BORE",
+    "examples": [
+      "Q HBORE",
+      "Q TBORE",
+      "Q ABORE",
+      "Q LBORE",
+      "Q BORE"
+    ],
+    "notes": "查头/尾/Arrive/Leave/公称孔径。社区来源，待复核。返回: Q BORE=构件公称孔径(当前显示单位 mm)；Q ABORE=Arrive 侧孔径；Q LBORE=Leave 侧孔径；Q HBORE=分支头侧公称孔径(mm)；Q TBORE=分支尾侧公称孔径(mm)。⚠ 三轮定向重扒：Q HBORE/TBORE 由 piping-knowledge + 搜索片段确认(head/tail side bore of a branch)，官方逐字图 Zoomin JS 抓不到，真机为准。",
+    "manualRef": "",
+    "confidence": "community",
+    "aliases": [
+      "Q HBORE",
+      "Q TBORE",
+      "Q ABORE",
+      "Q LBORE"
+    ]
+  },
+  {
+    "id": "e3d-cmd-q-ppoint",
+    "command": "Q P1",
+    "category": "query",
+    "syntax": "Q P1/P2/P3 [ <element> ]   （亦可嵌套子值，如 Q P1 BOLT1 BLEN）",
+    "examples": [
+      "Q P1",
+      "Q P2",
+      "Q P3",
+      "Q P1 BOLT1 BLEN"
+    ],
+    "notes": "查 P 点 bore/方向/连接类型/位置。社区来源。返回: 目录 P 点数据——Q P1/P2 = P 点 bore、方向、连接类型、位置；Q P3 = P 点 P3 数据(仅三通类三向件如 TEE 有)。mehungryblog 示 'Q P1 BOLT1 BLEN' 嵌套子值形态。⚠ 三轮定向重扒：piping-knowledge 明确 'Q P3 – Details of P-point P3 (tees only)'，官方逐字图 Zoomin JS 抓不到，真机为准。",
+    "manualRef": "",
+    "confidence": "community",
+    "aliases": [
+      "Q P2",
+      "Q P3"
+    ]
+  },
+  {
+    "id": "e3d-cmd-q-itle-atle",
+    "command": "Q ITLE",
+    "category": "query",
+    "syntax": "Q ITLE / ATLE（隐含 Leave/Arrive Tube 长；负值=重叠/无效）",
+    "examples": [
+      "Q ITLE",
+      "Q ATLE"
+    ],
+    "notes": "查隐含 Leave/Arrive Tube 长度，负值表示重叠/干涉/反向/无效。未找到官方页，未验证 — 负值含义须真机确认。返回: Q ITLE=相邻两管件间隐含(inter-tube)管段长度(mm)；Q ATLE=分支第一段管长(mm)。⚠ 三轮定向重扒：社区(piping-knowledge)一致给出上述含义，但官方页 Zoomin JS 抓不到、负值语义无官方背书，保持 unverified 不升级，真机为准。",
+    "manualRef": "",
+    "confidence": "unverified",
+    "aliases": [
+      "Q ATLE"
+    ]
+  },
+  {
+    "id": "e3d-cmd-q-tule-ltle",
+    "command": "Q TULE",
+    "category": "query",
+    "syntax": "Q TULE / LTLE（分支管长）",
+    "examples": [
+      "Q TULE",
+      "Q LTLE"
+    ],
+    "notes": "查分支管长。社区来源，待复核。返回: Q TULE=分支管道总长(整个分支的 tubing 总长，mm)。⚠ 三轮定向重扒：piping-knowledge + 搜索片段 'Q TULE – gives the branch tube length'，官方逐字图 Zoomin JS 抓不到，真机为准。",
+    "manualRef": "",
+    "confidence": "community",
+    "aliases": [
+      "Q LTLE"
+    ]
+  },
+  {
+    "id": "e3d-cmd-q-spre-catref",
+    "command": "Q SPRE",
+    "category": "query",
+    "syntax": "Q SPRE / CATREF / STYP / PSPEC / ISPEC",
+    "examples": [
+      "Q SPRE",
+      "Q CATREF",
+      "Q STYP",
+      "Q PSPEC",
+      "Q ISPEC"
+    ],
+    "notes": "查规格/目录/子类型/管等级/绝缘。社区来源。返回: Q SPRE/SPREF=规格引用(指向给出完整目录描述的 Specification Component，即一个数据库引用/规格名)。⚠ 三轮定向重扒：SPREF 属性定义本身官方逐字(DRMPCM24.09.22：'points to a Specification Component that provides the complete Catalogue description')；'Q SPRE'/'Q SPREF' 查询动词形态为社区，官方逐字图 Zoomin JS 抓不到，真机为准。",
+    "manualRef": "",
+    "confidence": "community",
+    "aliases": [
+      "Q CATREF",
+      "Q STYP",
+      "Q PSPEC"
+    ]
+  },
+  {
+    "id": "e3d-cmd-q-connections",
+    "command": "Q CONNECTIONS",
+    "category": "query",
+    "syntax": "Q CONNECTIONS / HCON / TCON / ACON / LCON",
+    "examples": [
+      "Q CONNECTIONS",
+      "Q HCON",
+      "Q TCON",
+      "Q ACON",
+      "Q LCON"
+    ],
+    "notes": "查连接类型。社区来源，待复核。返回: 无单一 'Q CONNECTIONS' 动词——连接查询按端分：Q HCON=分支头连接类型/引用；Q TCON=分支尾连接类型/引用；Q ACON/ACONN=组件 Arrive 连接；Q LCON/LCONN=组件 Leave 连接。返回连接类型 token 或所连元素引用。⚠ 三轮定向重扒：piping-knowledge 一致(Head/tail connection details)，官方逐字图 Zoomin JS 抓不到，真机为准。",
+    "manualRef": "",
+    "confidence": "community",
+    "aliases": [
+      "Q HCON",
+      "Q TCON",
+      "Q ACON",
+      "Q LCON"
+    ]
+  },
+  {
+    "id": "e3d-cmd-q-angle-radius",
+    "command": "Q ANGLE",
+    "category": "query",
+    "syntax": "Q ANGLE / RADIUS / HEIGHT",
+    "examples": [
+      "Q ANGLE",
+      "Q RADIUS",
+      "Q HEIGHT"
+    ],
+    "notes": "查变角/半径/高度。社区来源。返回: Q ANGLE=构件 ANGLE 属性(如弯头/弯管角，度)；Q RADIUS=构件 RADIUS 属性(如弯曲半径，当前长度单位 mm)；Q HEIGHT=高度。⚠ 三轮定向重扒：ANGLE/RADIUS 作为标准变量属性官方逐字(DRMPCM24.09.22 列为变量属性)；'Q ANGLE'/'Q RADIUS' 查询动词形态为社区，单位(度)为推断，官方逐字图 Zoomin JS 抓不到，真机为准。",
+    "manualRef": "",
+    "confidence": "community",
+    "aliases": [
+      "Q RADIUS",
+      "Q HEIGHT"
+    ]
+  },
+  {
+    "id": "e3d-cmd-q-material-text",
+    "command": "Q MTXX",
+    "category": "query",
+    "syntax": "Q MTXX / DTXR / RTEX",
+    "examples": [
+      "Q MTXX",
+      "Q DTXR",
+      "Q RTEX"
+    ],
+    "notes": "查材料/明细描述文本。社区来源。⚠ 三轮定向重扒（诚实）：'Q MTXX' / 'Q MTOX' **无任何官方或社区来源记载**，疑为笔误/罕见拼写，标 not-found，绝不臆造。可用的材料引用查询是 Q MATREF（返回材料引用，pdmsforyou：'Q MATREF – Material reference'）。RTEX/STEX/TTEX 等为规格文本(TEXT)问题项。返回: Q MATREF=材料引用；MTXX 本身无返回值(不存在)。真机 $Q 为准。",
+    "manualRef": "",
+    "confidence": "community",
+    "aliases": [
+      "Q DTXR",
+      "Q RTEX",
+      "Q MATREF"
+    ]
+  },
+  {
+    "id": "e3d-cmd-q-para-nvol",
+    "command": "Q PARA",
+    "category": "query",
+    "syntax": "Q PARA / NVOL / NWEI",
+    "examples": [
+      "Q PARA",
+      "Q NVOL",
+      "Q NWEI"
+    ],
+    "notes": "查参数/净体积/净重。社区来源。返回: Q PARA=当前元素设计参数(PARAM 数组，驱动几何的数值参数)；Q NVOL=CE 净体积(数值，立方长度单位，伪属性按需计算)；Q NWEI=CE 净重(数值，当前质量单位，伪属性)。⚠ 三轮定向重扒：NVOL/NWEI 官方伪属性页(929320)存在但 Zoomin JS 抓不到；查询动词与返回说明为社区一致来源，真机 $Q 为准。",
+    "manualRef": "",
+    "confidence": "community",
+    "aliases": [
+      "Q NVOL",
+      "Q NWEI"
+    ]
+  },
+  {
+    "id": "e3d-cmd-var-collect",
+    "command": "COLLECT",
+    "category": "collection",
+    "syntax": "VAR !Array COLLECT <selection criteria>  选择准则顺序：class → WITH/WHERE(表达式) → WITHIN(体积) → FOR(层级) [EXCLUDE ...]",
+    "examples": [
+      "VAR !LENGTHS COLLECT ALL WITH ( XLEN * YLEN * ZLEN GT 1000 )",
+      "VAR !P COLLECT ALL PIPE EXCLUSIVE WITHIN VOLUME /PUMP1 1500",
+      "VAR !BENDS APPEND COLLECT ALL ELBOWS",
+      "VAR !cln COLLECT ALL EQUI"
+    ],
+    "notes": "遍历收集元素到数组变量。class 形态：ALL、ALL FRMW、ALL BRANCH MEMBERS、ITEMS OF EQUI /VESS1、( /PIPE1 /PIPE2 )。逻辑表达式 WITH/WHERE；空间盒 WITHIN <bpos> TO <bpos> 或 WITHIN VOLUME <元素> <间隙>（EXCLUSIVE=仅完全在盒内）；层级限定 FOR /PIPE1 EXCLUDE BRAN 1 OF /PIPE2。追加/覆盖：APPEND / [99]。索引加速：FROM TABLE NAME PREFIX '/B'、FROM TABLE SPRE VALUE /RF300/100G。性能建议：先用 class/FOR/WITHIN 缩小范围。DBRM 第 11 章。",
+    "manualRef": "DBRM11",
+    "confidence": "official-verbatim",
+    "aliases": [
+      "COLL",
+      "COLLECT"
+    ]
+  },
+  {
+    "id": "e3d-cmd-evaluate",
+    "command": "EVALUATE",
+    "category": "collection",
+    "syntax": "VAR !variable EVALUATE <expression> FOR <selection>",
+    "examples": [
+      "var !name evaluate (description) for all from !cln",
+      "var !name evaluate (description) for all EQUI"
+    ],
+    "notes": "对选择集逐元素求值表达式并收集结果。常与 COLLECT 配合（先 collect 后 evaluate）。DBRM 第 11 章。",
+    "manualRef": "DBRM11",
+    "confidence": "official-verbatim",
+    "aliases": [
+      "EVAL",
+      "EVALUATE"
+    ]
+  },
+  {
+    "id": "e3d-cmd-from-table",
+    "command": "FROM TABLE",
+    "category": "collection",
+    "syntax": "COLLECT ... FROM TABLE NAME PREFIX '<前缀>' | FROM TABLE SPRE VALUE <值> | FROM TABLE :UDA VALUE <v1> TO <v2>",
+    "examples": [
+      "FROM TABLE NAME PREFIX '/B'",
+      "FROM TABLE SPRE VALUE /RF300/100G",
+      "FROM TABLE :MYATT VALUE 100 TO 110",
+      "FOR DB CTBATEST/DESI"
+    ],
+    "notes": "COLLECT 的索引加速子句。索引属性含 CATR/SPRE/LSTU/ISPE/DOCREF 等（官方给全表）。DBRM 第 11 章。",
+    "manualRef": "DBRM11",
+    "confidence": "official-verbatim",
+    "aliases": []
+  },
+  {
+    "id": "e3d-cmd-matchwild",
+    "command": "MATCHWILD",
+    "category": "collection",
+    "syntax": "PML STRING 方法：\nBOOLEAN MatchWild( STRING pattern )\nBOOLEAN MatchWild( STRING pattern, STRING multiChar )\nBOOLEAN MatchWild( STRING pattern, STRING multiChar, STRING singleChar )\n命令/表达式函数形态（社区）：MATCHWILD ( <text> , <pattern> )",
+    "examples": [
+      "if (!line.MatchWild('*Valve*')) then ...",
+      "!b = !nm.MatchWild('/M*')",
+      "Q ALL PIPE WITH ( MATCHWILD ( NAME , '/*V*' ) )"
+    ],
+    "notes": "官方逐字来自 SCRM3.3.79（PML STRING 对象方法 MatchWild）：返回 BOOLEAN，缺省 *=任意串、?=单字符；可选第 2/3 参重定义多/单字符通配符（须相异，仅 pattern 可含通配符）。命令/表达式语言里的 MATCHWILD(<text>,<pattern>) 文本函数形态规则一致但独立逐字页只在 docs.aveva.com Zoomin(JS 渲染)未抓到，属 community。附录③.9。",
+    "manualRef": "SCRM3.3.79",
+    "confidence": "official-verbatim",
+    "aliases": [
+      "MATCH",
+      "MatchWild"
+    ]
+  },
+  {
+    "id": "e3d-cmd-var",
+    "command": "VAR",
+    "category": "variable",
+    "syntax": "VAR !x <词序列>（捕获形态，结果为字符串） | !x = <PML2 表达式>（赋值形态，保留类型）\nVAR !VarName RAW ...                       抑制自动编辑，赋未经处理的字符串\nVAR !Index SORT [UNIQUE|NOUNSET|NOEMPTY]* !Array1 [<sortopt>]* ... [LASTINGROUP|FIRSTINGROUP !Group]\n   <sortopt> = CIASCII|DESCENDING|NUMERIC|(NUMERIC DESCENDING)|(CIASCII DESCENDING)\nVAR !Totals SUBTOTAL !Values !Index !Group  分组求小计（单位限定词被忽略）\nVAR !variable EVALUATE <expression>         求值返回带单位限定的字符串/数组（min EVAL）\nVAR !variable <ATTRIBUTE>                    如 VAR !X XLEN → \"46cm\"",
+    "examples": [
+      "VAR !FRED NAME",
+      "VAR !POS POS IN WORLD",
+      "VAR !list COLL ALL ELBO FOR CE",
+      "!temp = 23 * 1.8 + 32",
+      "VAR !VarName RAW ...",
+      "VAR !Index SORT !Car CIASCII !Colour !Year NUMERIC",
+      "VAR !D EVAL (DIAM) for all CYLI",
+      "VAR !X XLEN"
+    ],
+    "notes": "VAR !x 捕获形态仅存为字符串（TM-1401）；!x = <PML2表达式> 赋值形态保留 REAL/BOOLEAN/ARRAY 类型（SOFTCG5.05.8）。RAW 关键字（SOFTCG9.09.09）抑制换行/压空格的自动编辑，赋未经处理字符串。SORT（SOFTCG7.07.10）多级排序、SUBTOTAL/EVALUATE/ATTRIBUTE（SOFTCG7.07.11）分组小计/求值/取带单位属性。变量删除用 .Delete()（SOFTCG3.03.26），1.1 SOFTCG 无 VAR EXPUNGE 关键字。附录③.5。",
+    "manualRef": "SOFTCG5.05.8",
+    "confidence": "official-verbatim",
+    "aliases": []
+  },
+  {
+    "id": "e3d-cmd-variable-scope",
+    "command": "!/!!",
+    "category": "variable",
+    "syntax": "!name = 局部变量（仅本 Function/macro 内有效）；!!name = 全局变量（整个 session 或直到删除）",
+    "examples": [
+      "!localVar",
+      "!!globalVar"
+    ],
+    "notes": "变量作用域：! 局部（仅本宏内），!! 全局（整个 session）。名称字母开头，字母+数字组合，≤64 Unicode 字符（不含 !/!!）；不建议含 .（PML2 中 . 为对象/方法分隔符）。跨 API 调用读回必须用 !!（局部 ! 生命周期限于那次宏执行）。SOFTCG3.03.07。",
+    "manualRef": "SOFTCG3.03.07",
+    "confidence": "official-verbatim",
+    "aliases": []
+  },
+  {
+    "id": "e3d-cmd-dollar-substitution",
+    "command": "$",
+    "category": "variable",
+    "syntax": "$P <text-to-end-of-line>   输出文本到屏幕\n$M/<filename>              执行文本文件（宏）\n$!<PmlVariableName>         把 PML 变量按 .STRING() 展开为字符串（$!! 全局）\n$Q                         语法提示查询（列出下一合法命令词/参数类型）\n$$                         字面量 $（须双写）\n<command text> $ <newline> 行尾 $ = 续行\n$newline                   续行且不自动闭合",
+    "examples": [
+      "$P This text will be output to the screen",
+      "$M/filename",
+      "$P Area is $!Area",
+      "$Q",
+      "NEW BOX $Q",
+      "$$"
+    ],
+    "notes": "$ 特殊字符族逐字来自 SOFTCG4.04.06：$P 输出、$M/filename 执行宏、$!var 变量按 .STRING() 展开（$!! 全局）、$$ 字面 $、行尾 $ 续行、$newline 续行不自动闭合。$Q 是独立的语法提示查询（SOFTCG13.13.14），列出下一个合法命令词/参数类型，非变量替换。附录③.5。",
+    "manualRef": "SOFTCG4.04.06",
+    "confidence": "official-verbatim",
+    "aliases": [
+      "$M",
+      "$Q",
+      "$P",
+      "$!"
+    ]
+  },
+  {
+    "id": "e3d-cmd-if",
+    "command": "IF",
+    "category": "control-flow",
+    "syntax": "if (boolean_expression) then\n  command_block\nelseif (boolean_expression) then\n  command_block\nelse\n  command_block\nendif",
+    "examples": [
+      "if (!Number LT 0) then\n  !Negative = TRUE\nendif",
+      "if (!x gt 0) then ... elseif (!x eq 0) then ... else ... endif"
+    ],
+    "notes": "PML2 条件控制流。官方逐字（SOFTCG6.06.02 'IF Construct'，1.1 静态页）：逐个检查 BOOLEAN 表达式，遇第一个 TRUE 即执行其命令块，其余到 endif 忽略；else/elseif 可选，最简形 if (expr) then ... endif。**规则**：(1)命令不得在同一行拼接——'if ( !Number LT 0 ) then !Negative = TRUE endif' 与 'if ( !Number LT 0 ) !Negative = TRUE' 均禁止（每关键字/块各占一行）；(2)IF/ELSEIF 布尔后须 then，endif 必填；(3)短路——(!TrueValue OR !UnsetValue) 中未设值若不影响结果可被忽略。相关页 SOFTCG6.06.03(嵌套)/6.06.04(布尔表达式)/6.06.05(IF TRUE)。返回: 无（控制流结构）。附录④.control。",
+    "manualRef": "SOFTCG6.06.02",
+    "confidence": "official-verbatim",
+    "aliases": [
+      "ELSEIF",
+      "ELSE",
+      "ENDIF"
+    ]
+  },
+  {
+    "id": "e3d-cmd-do",
+    "command": "DO",
+    "category": "control-flow",
+    "syntax": "do [!var] [from n] [to m] [by s]\n  command_block\nenddo\n\n数组迭代：\nDO !x VALUES !array   $* !x 取每个元素值\nDO !x INDEX  !array   $* !x 为 1..数组大小的下标",
+    "examples": [
+      "do !x from 10 to 100 by 10\n  !Total = !Total + !X\nenddo",
+      "do !site values !allSites\n  q var !site.name\nenddo",
+      "do !index index !allSites\n  q var !allSites[!index].name\nenddo"
+    ],
+    "notes": "PML2 循环控制流。官方逐字（SOFTCG6.06.06 'DO Loops' + SOFTCG6.06.10 'DO INDEX and DO VALUES'，1.1 静态页）。默认值：from 缺省=1；to 缺省=无穷（无 to = 无限循环，靠 break/golabel 跳出）；by 缺省=+1（可正可负）。!var/from/to/by 全可选；enddo 必填。循环变量 !var 为 REAL，每次迭代自动更新计数值，循环后保留最终值；同名已存在变量在循环初始化时被删除。**PML 无 FOR/WHILE/REPEAT，全由 DO 替代**。DO !x VALUES 把数组每个元素直接赋 !x（如遍历 collection results 的 DBREF）；DO !x INDEX 给 1..size 的下标用 !array[!x] 取值（1.1 手册关键字为 INDEX 单数）。跳出/跳过见 break/breakif(e3d-cmd-break)。返回: 无（循环结构）。附录④.control。",
+    "manualRef": "SOFTCG6.06.06",
+    "confidence": "official-verbatim",
+    "aliases": [
+      "ENDDO",
+      "DO VALUES",
+      "DO INDEX"
+    ]
+  },
+  {
+    "id": "e3d-cmd-break",
+    "command": "BREAK",
+    "category": "control-flow",
+    "syntax": "break                          $* 无条件退出循环\nbreak if (boolean_expression)  $* 条件为 TRUE 时退出",
+    "examples": [
+      "do !Number\n  if (!Number GT 100) then\n    break\n  endif\n  !Result = !Result + !Number\nenddo",
+      "do !Number\n  break if (!Number GT 100)\n  !Result = !Result + !Number\nenddo"
+    ],
+    "notes": "停止 DO 循环。官方逐字（SOFTCG6.06.07 'Stopping a DO loop: break and breakif'，1.1 静态页）：break 时循环计数变量保留 break 发生时的值。break if 可用任意表达式（含 PML Function），只要结果为 BOOLEAN(TRUE/FALSE)；条件外括号可选但推荐。搭档 SOFTCG6.06.08 'Skipping Commands in a DO Loop using Skip or Skip if'。返回: 无。附录④.control。",
+    "manualRef": "SOFTCG6.06.07",
+    "confidence": "official-verbatim",
+    "aliases": [
+      "BREAK IF",
+      "BREAKIF"
+    ]
+  },
+  {
+    "id": "e3d-cmd-handle",
+    "command": "HANDLE",
+    "category": "control-flow",
+    "syntax": "$* 可能报错的命令\nhandle (err_group, err_number)\n  $* 针对该具体错误的处理块\nelsehandle (err_group, err_number)\n  $* 针对另一具体错误\nelsehandle ANY\n  $* 处理任何(未匹配)错误\nelsehandle NONE\n  $* 仅在无错误时处理\nendhandle",
+    "examples": [
+      "handle (46, 27)\nelsehandle (46, 28)\n  $* 匹配 Error(46,28) 时处理这里\nelsehandle ANY\nelsehandle NONE\nendhandle",
+      "NEW EQUI /ABCD\nhandle (41, 8) $P Need to be at a ZONE or below\nelsehandle (41, 12) $P That name has already been used\nelsehandle ANY $P Another error has occurred\nelsehandle NONE $P Everything OK. EQUI created\nendhandle"
+    ],
+    "notes": "PML2 错误处理。官方逐字（SOFTCG11.11.2 'Handling Errors'，1.1 静态页；第一例逐字）：错误以 (group, number) 对标识（如 (46,28)）。命中某 handle 块时 PML 执行该块命令而非输出错误，然后从 ENDHANDLE 后继续；若错误后无 handle 命令，行为取决于 ONERROR 设置（默认 onerror RETURN）。**关键规则**：PML 宏/函数中的错误不立即报出，取决于下一行输入——handle 命令必须是紧接的下一条命令。ELSEHANDLE ANY 捕获任何未匹配错误；ELSEHANDLE NONE 仅在无错误时运行。相关页 SOFTCG11.11.1/11.11.3(ONERROR)/11.11.4。返回: 无（错误处理结构）。附录④.control。",
+    "manualRef": "SOFTCG11.11.2",
+    "confidence": "official-verbatim",
+    "aliases": [
+      "ELSEHANDLE",
+      "ENDHANDLE"
+    ]
+  },
+  {
+    "id": "e3d-cmd-savework",
+    "command": "SAVEWORK",
+    "category": "database",
+    "syntax": "SAVEWORK 'comment' [n]",
+    "examples": [
+      "SAVEWORK 'end of pipe routing'",
+      "SAVEWORK 'comment' 1"
+    ],
+    "notes": "保存当前 MODEL 修改而不退出。可选整数 n=只保存 STATUS 列出的第 n 个数据库；不带 n 对整个 MDB 生效。每次保存在 DB 文件末尾追加新 session。官方建议长会话中定期 SAVEWORK。DBRM5.06.1（手册仅给命令行形态，无正式铁路图）。附录③.6。",
+    "manualRef": "DBRM5.06.1",
+    "confidence": "official-verbatim",
+    "aliases": [
+      "SAVE"
+    ]
+  },
+  {
+    "id": "e3d-cmd-getwork",
+    "command": "GETWORK",
+    "category": "database",
+    "syntax": "GETWORK [n]",
+    "examples": [
+      "GETWORK",
+      "GETWORK 2"
+    ],
+    "notes": "刷新所有 READ 数据库视图，拾取自打开以来其他用户已 SAVEWORK 的修改。可选 n 语义同 SAVEWORK。⚠ 会拖慢后续数据库访问（数据从磁盘重读），官方建议谨慎，通常仅在明确要拾取某些改动时用。DBRM5.06.1。附录③.6。",
+    "manualRef": "DBRM5.06.1",
+    "confidence": "official-verbatim",
+    "aliases": []
+  },
+  {
+    "id": "e3d-cmd-claim",
+    "command": "CLAIM",
+    "category": "database",
+    "syntax": ">-- CLAIM ----*-- elementname --+-- HIERARCHY ---.\n                                 |                |\n                                 '----------------+-->",
+    "examples": [
+      "CLAIM /ZoneA /EQUIP100 /PIPE-100-A",
+      "CLAIM /ZoneA HIERARCHY",
+      "CLAIM /ELBOW-33"
+    ],
+    "notes": "在 multiwrite 数据库中占用(claim)元素后方可修改，阻止他人 claim/改。* = 可循环多个 elementname；可选 HIERARCHY = 连同名下整个从属层级一起 claim。只有 primary element 可被 claim（给非 significant 元素会 claim 其所属 branch）。切换模块/退出 E3D 时自动 unclaim。删元素前须先 claim。DBRM6.07.2。附录③.6。",
+    "manualRef": "DBRM6.07.2",
+    "confidence": "official-verbatim",
+    "aliases": []
+  },
+  {
+    "id": "e3d-cmd-unclaim",
+    "command": "UNCLAIM",
+    "category": "database",
+    "syntax": ">-- UNCLAIM ---*-- elementname --+-- HIERARCHY ---.\n                                 | |              |\n                                 '-- ALL ----------+-->",
+    "examples": [
+      "UNCLAIM /PIPE-100 /PIPE-200",
+      "UNCLAIM ALL",
+      "UNCLAIM /ZoneA HIERARCHY"
+    ],
+    "notes": "释放已 claim 的元素供他人使用。* = 可循环多个 elementname；可选 HIERARCHY 连同从属层级一并 unclaim；UNCLAIM ALL 释放当前所有已 claim 元素（SAVEWORK 时常用配套）。DBRM6.07.2。附录③.6。",
+    "manualRef": "DBRM6.07.2",
+    "confidence": "official-verbatim",
+    "aliases": []
+  },
+  {
+    "id": "e3d-cmd-release",
+    "command": "RELEASE",
+    "category": "database",
+    "syntax": "EXTRACT RELEASE  （本组无独立顶层 RELEASE；user 级释放用 UNCLAIM）",
+    "examples": [
+      "EXTRACT RELEASE"
+    ],
+    "notes": "RELEASE 在数据库命令组不是独立顶层命令，只以 EXTRACT RELEASE 出现：释放 extract claim，且只能释放已经 flush 过的改动。用户级(user claim)释放用 UNCLAIM。DBRM6.07.4。附录③.6。",
+    "manualRef": "DBRM6.07.4",
+    "confidence": "official-verbatim",
+    "aliases": []
+  },
+  {
+    "id": "e3d-cmd-extract",
+    "command": "EXTRACT",
+    "category": "database",
+    "syntax": ">- EXTRACT -+- FLUSH ----------------.\n            |- FLUSHWithoutrefresh --|\n            |- RELEASE --------------|\n            |- ISSUE ---------------.|\n            |- DROP ----------------|\n            |                       .-------<-------.\n            '- REFRESH -----------+--*-- elementname --+- HIERARCHY -.\n                                 |                    |\n                                 '-- DB dbname -------+->\n（另: EXTRACT CLAIM ALL <type> WHERE (<expr>) [HIERARCHY]）",
+    "examples": [
+      "EXTRACT FLUSH",
+      "EXTRACT ISSUE",
+      "EXTRACT RELEASE",
+      "EXTRACT DROP",
+      "EXTRACT REFRESH",
+      "EXTRACT CLAIM ALL STRU WHERE (:OWNER EQ 'USERA') HIERARCHY"
+    ],
+    "notes": "extract 数据库写回/领取。FLUSH=改动写回父 extract 保留 claim；FLUSHWithoutrefresh=同上但不刷新；RELEASE=释放 extract claim(仅已 flush)；ISSUE=写回并释放；DROP=丢弃未 flush 改动(须先 unclaim)；REFRESH=用父/master 改动刷新本 extract。* 循环 elementname，可选 HIERARCHY/DB dbname。每次 flush 建新 session，应批量 flush。DBRM6.07.4。附录③.6。",
+    "manualRef": "DBRM6.07.4",
+    "confidence": "official-verbatim",
+    "aliases": []
+  },
+  {
+    "id": "e3d-cmd-lock",
+    "command": "LOCK",
+    "category": "database",
+    "syntax": ">--- LOCK ---+--- AT <loc> ---.\n             |                 |\n             '----------------->\n\n>--- UNLOck ---+---------------.\n               |               |\n               '--- AT <loc> -->",
+    "examples": [
+      "LOCK",
+      "LOCK AT LON",
+      "UNLOCK",
+      "UNLOCK AT LON",
+      "Q LOCK"
+    ],
+    "notes": "⚠ 项目/数据库级锁（非元素级）。官方逐字（ACRM Administrator Command Reference Manual）：LOCK(ACRM8.08.053) 锁定整个项目数据库，阻止其它用户进入该项目直到 UNLOCK；UNLOCK(ACRM8.08.101) 'Unlocks all locked databases.'。`AT <loc>` 仅在 Global Project Hub/管理位置可用（锁远端库）；'Locking and Unlocking commands are not recorded in the transaction database.'（锁/解锁不记入事务库）。缩写 UNLOck。**注意 ACRM 的 LOCK 无 ALL 关键字**——`LOCK ALL`/`LOCK CE` 是另一条【元素级】锁属性命令（见 e3d-cmd-lock-element，社区）。查询 Q LOCK 返回项目当前锁定状态。返回: 无直接返回值（执行即锁/解锁库）。附录④.misc。",
+    "manualRef": "ACRM8.08.053",
+    "confidence": "official-verbatim",
+    "aliases": [
+      "UNLOCK",
+      "UNLOck"
+    ]
+  },
+  {
+    "id": "e3d-cmd-lock-element",
+    "command": "LOCK ALL",
+    "category": "database",
+    "syntax": "LOCK            → 锁当前元素(CE)\nLOCK CE         → 锁当前元素(CE)\nLOCK ALL        → 锁当前元素及其所有子元素/成员\nUNLOCK / UNLOCK CE → 解锁当前元素\nUNLOCK ALL      → 解锁当前元素及其所有子元素/成员",
+    "examples": [
+      "LOCK",
+      "LOCK ALL",
+      "UNLOCK",
+      "UNLOCK ALL",
+      "Q LOCK"
+    ],
+    "notes": "⚠ 元素级锁属性（防误改），与项目库锁 e3d-cmd-lock（防进入）是两条不同命令。设 CE 及其成员的 LOCK 属性(TRUE/FALSE)。官方页 'Special Syntax for LOCK' 仅在 docs.aveva.com/bundle/e3d-design/page/911901.html（Zoomin JS，三轮 WebFetch 均返回搜索壳无正文），故 ALL 形式的逐字铁路图取不到，语义形态为社区一致来源（AVEVA PDMS/E3D Enthusiasts Hub 等）。Q LOCK 返回该元素锁状态。返回: 设置元素 LOCK 属性。附录④.misc。",
+    "manualRef": "",
+    "confidence": "community",
+    "aliases": [
+      "LOCK CE",
+      "UNLOCK ALL",
+      "UNLOCK CE"
+    ]
+  },
+  {
+    "id": "e3d-cmd-undo",
+    "command": "UNDO",
+    "category": "database",
+    "syntax": "UNDODB\nREDODB\nMARKDB 'comment'\n⚠ 真名带 DB 后缀，非 UNDO/REDO/MARK",
+    "examples": [
+      "UNDODB",
+      "REDODB",
+      "MARKDB 'before route change'"
+    ],
+    "notes": "⚠ 数据库撤销/重做真实命令名是 UNDODB/REDODB/MARKDB（不是 UNDO/REDO/MARK）。UNDODB 撤销最近 transaction（可多次），其后任何 DB 改动使 REDODB 失效；REDODB 重做到下一 mark（仅在 UNDODB 后有效）；MARKDB 'comment' 完成当前 transaction 并开新 transaction 作 undo/redo 边界(comment 必填)。DBRM7.08.1。附录③.6。",
+    "manualRef": "DBRM7.08.1",
+    "confidence": "official-verbatim",
+    "aliases": [
+      "UNDODB",
+      "REDODB",
+      "MARKDB"
+    ]
+  },
+  {
+    "id": "e3d-cmd-session-comment",
+    "command": "SESSION COMMENT",
+    "category": "database",
+    "syntax": ">-- SESSION COMMENT -- text -->\n\n可作为 SAVEWORK 一部分：SAVEWORK 'MY COMMENTS'\n\n查询：Q --+-- SESSComment --+\n         |-- SESSUser -----|\n         '-- SESSDate -----+-- integer -->",
+    "examples": [
+      "SESSION COMMENT 'Addition of upper platform'",
+      "SAVEWORK 'MY COMMENTS'",
+      "Q SESSComment 58",
+      "Q SESSUser 58",
+      "Q SESSDate 58"
+    ],
+    "notes": "官方逐字（DBRM5.06.3 'Session Comments'；查询形式 DBRM12.13.04）：'Lets you associate comment text with the current MODEL session'——给当前设计会话打注释，便于日后识别哪次 session 改了哪些元素/属性。**应在 SAVEWORK 之前输入**（或用 `SAVEWORK 'text'` 一步带上）。integer=session 号；Session 1、2 由 ADMIN 建 MODEL DB 与 World 元素时创建，故第一个真正设计 session 是 Session 3。Q SESSComment integer 返回该 session 注释；Q SESSUser 返回责任用户名；Q SESSDate 返回创建日期时间。返回: SESSION COMMENT 本身无返回值。附录④.misc。",
+    "manualRef": "DBRM5.06.3",
+    "confidence": "official-verbatim",
+    "aliases": [
+      "Q SESSComment",
+      "Q SESSUser",
+      "Q SESSDate"
+    ]
+  },
+  {
+    "id": "e3d-cmd-nav-name",
+    "command": "/名字",
+    "category": "navigation",
+    "syntax": "/<name>",
+    "examples": [
+      "/PUMP99",
+      "/BRANCH2",
+      "/1205-A8"
+    ],
+    "notes": "按标准名跳转到元素并设为 CE（仅命名元素有效）。DBRM2.03.06（Specify the Standard Name）。CE=Current Element。附录③.7。",
+    "manualRef": "DBRM2.03.06",
+    "confidence": "official-verbatim",
+    "aliases": []
+  },
+  {
+    "id": "e3d-cmd-nav-owner",
+    "command": "OWNER",
+    "category": "navigation",
+    "syntax": "OWNER  （上移到 owner，位置停在第一成员之前）\nEND    （上移到 owner，位置停在 climb 来的那个元素）\n<element-type>  （上移到最近的该类型 owner）",
+    "examples": [
+      "OWNER",
+      "END",
+      "EQUI",
+      "SITE"
+    ],
+    "notes": "Climb Up 相对定位（DBRM2.03.12）：OWNER 上移到 owner 并把位置停在第一成员之前；END 上移到 owner 但位置停在 climb 来的元素；裸 <element-type> 上移到最近的该类型 owner。附录③.7。",
+    "manualRef": "DBRM2.03.12",
+    "confidence": "official-verbatim",
+    "aliases": [
+      "OWN",
+      "END"
+    ]
+  },
+  {
+    "id": "e3d-cmd-nav-member",
+    "command": "MEMBER",
+    "category": "navigation",
+    "syntax": "<int>  |  MEMBER <int>  |  FIRST MEMBER  |  LAST MEMBER  |  FIRST [<int>] <element-type>  |  LAST [<int>] <element-type>  |  NEXT [<int>] <element-type>  |  <element-type> <int>",
+    "examples": [
+      "5",
+      "MEMBER 1",
+      "FIRST MEMBER",
+      "LAST MEMBER",
+      "FIRST 3 CYL",
+      "BOX 4"
+    ],
+    "notes": "下降一层进入 CE 的成员表（DBRM2.03.14）。裸整数选第 n 个子件；FIRST/LAST MEMBER 到首/末成员；类型限定形态选该类型第 n 个成员；<element-type> <int> 选该类型第 n 个。选中的成员成为新 CE。附录③.7。",
+    "manualRef": "DBRM2.03.14",
+    "confidence": "official-verbatim",
+    "aliases": [
+      "MEM",
+      "MEMBER"
+    ]
+  },
+  {
+    "id": "e3d-cmd-nav-first-last-next-prev",
+    "command": "FIRST",
+    "category": "navigation",
+    "syntax": "FIRST    [ <int> ] [ <element-type> ]\nLAST     [ <int> ] [ <element-type> ]\nNEXT     [ <int> ] [ <element-type> ]\nPREVIOUS [ <int> ] [ <element-type> ]   （min PREV）",
+    "examples": [
+      "FIRST",
+      "LAST",
+      "NEXT",
+      "PREVIOUS",
+      "NEXT 3 BOX",
+      "FIRST CYL",
+      "LAST 2 CYL",
+      "PREV BOX"
+    ],
+    "notes": "在同层成员表间移动 CE（DBRM2.03.13 Move within the Current Level）。可选整数=移动步数；可选元素类型=移到下一个该类型元素。NEXT <type> 落在第一个匹配元素。PREVIOUS 最小缩写 PREV。附录③.7。",
+    "manualRef": "DBRM2.03.13",
+    "confidence": "official-verbatim",
+    "aliases": [
+      "LAST",
+      "NEXT",
+      "PREVIOUS",
+      "PREV"
+    ]
+  },
+  {
+    "id": "e3d-cmd-nav-goto-end",
+    "command": "GOTO",
+    "category": "navigation",
+    "syntax": "END   （上移到 owner，位置停在 climb 来的元素，DBRM2.03.12）\nSAME  （返回上一个 CE，DBRM2.03.19）\nCE    （命令关键字，指代当前元素；PML 全局变量 !!CE）\n（GOTO：本导航章未找到，标 not-found）",
+    "examples": [
+      "END",
+      "SAME",
+      "Q CE",
+      "!!CE.Name"
+    ],
+    "notes": "⚠ 归属更正：DBRM2.03 导航章无 GOTO 命令（not-found）。返回上一 CE 用 SAME（DBRM2.03.19）；END（DBRM2.03.12）上移到 owner 且位置停在 climb 来的元素；CE 是指代当前元素的命令关键字，PML 有全局 DBREF 变量 !!CE 跟踪 CE。绝对跳转用 /name、=refno、OF 构造名。附录③.7/③.10。",
+    "manualRef": "DBRM2.03.19",
+    "confidence": "official-verbatim",
+    "aliases": [
+      "END",
+      "SAME",
+      "CE"
+    ]
+  },
+  {
+    "id": "e3d-cmd-display-add",
+    "command": "ADD",
+    "category": "display",
+    "syntax": ">-- ADD --+-- Only --+ .----<-------.\n          |          |/            |\n          '----------*-- <selatt> --+-- COLour <colno> -->\n\n<colno> = integer | ACTive | VISIble | CE | CLASH | OBST | AIDS",
+    "examples": [
+      "ADD ONLY /VESS1/N1",
+      "ADD /P100A",
+      "ADD CE",
+      "ADD /ZONE1 /ZONE2 COLOUR 5"
+    ],
+    "notes": "把设计元素加进 Draw List / 3D 视图（只改显示，不改数据库）。ONLY 只加所选本身。COLOUR <colno> 指定绘制色号（整数或 ACTIVE/VISIBLE/CE/CLASH/OBST/AIDS 语义色）。<selatt> 可 ALL <type> WITH(...) 过滤并循环。DRMPGC15.05.02。附录③.8。",
+    "manualRef": "DRMPGC15.05.02",
+    "confidence": "official-verbatim",
+    "aliases": []
+  },
+  {
+    "id": "e3d-cmd-display-remove",
+    "command": "REMOVE",
+    "category": "display",
+    "syntax": ">-- REMove --+-- Only --+\n             |          |\n             '----------+-- <selatt> ------>\n\n（REM ALL：清空整个 Draw List 与屏幕）",
+    "examples": [
+      "REMOVE ONLY /VESS1/N1",
+      "REMOVE /BRANCH1",
+      "REM SITE /PIPING",
+      "REM ALL"
+    ],
+    "notes": "从 Draw List 与显示中移除元素（只改显示）。最小缩写 REM。ONLY 只移所选本身；REM ALL 清空全部。DRMPGC15.05.04。附录③.8。",
+    "manualRef": "DRMPGC15.05.04",
+    "confidence": "official-verbatim",
+    "aliases": [
+      "REM"
+    ]
+  },
+  {
+    "id": "e3d-cmd-display-enhance",
+    "command": "ENHANCE",
+    "category": "display",
+    "syntax": ">-- ENHANCE --+-- SOLELY --.  .----<----.\n              |            |  |         |\n              '-----------+*-- <selatt> --+-- COLour <colno> --.\n                                          |                    |\n                                          +- LENGth <uval> OF -+- <hlid> --+-->\n                                          '- TOTAl ------------'\n<hlid> = LEAVE | ARRIVE | HEAD | TAIL [ ROD | TUBE ] OF <gid> COLour <colno>\n\n>-- UNENHANCE --+-- <selatt> --+-- <selatt> --.\n                |             |               |\n                +- <hlid> -----+--------------+-->",
+    "examples": [
+      "ENHANCE SOLELY ALL REDU WITH (ABOR GT 10) COLOUR 13",
+      "ENHANCE /PIPE1 /PIPE2 COLOUR 5",
+      "ENHANCE LENGTH 20 OF LEAVE TUBE COLOUR 7",
+      "UNENHANCE ALL"
+    ],
+    "notes": "高亮显示已在 Draw List 的构件（只改显示）。SOLELY 只高亮所选、清其余高亮。COLOUR <colno> 高亮色；LENGTH <uval> OF / TOTAL 对管件端部(LEAVE/ARRIVE/HEAD/TAIL 的 ROD/TUBE)按长度或全长高亮。UNENHANCE 成对撤销。DRMPGC15.05.21。附录③.8。",
+    "manualRef": "DRMPGC15.05.21",
+    "confidence": "official-verbatim",
+    "aliases": [
+      "UNENHANCE"
+    ]
+  },
+  {
+    "id": "e3d-cmd-display-repr",
+    "command": "REPR",
+    "category": "display",
+    "syntax": "HOLES: >-- REPResentation --*-- HOLes ---+-- ON|OFF -->\n\nOBST/INSU: >- REPResentation -*- OBSTruction|INSUlation -+- ON [TRANSLucency value] | OFF -->",
+    "examples": [
+      "REPR HOLES ON",
+      "REPR HOLES OFF",
+      "REPR OBST ON INSU OFF",
+      "REPR INSU ON TRANSLUCENCY 25",
+      "Q REPR HOLES",
+      "Q REPR INSU TRANSL"
+    ],
+    "notes": "设置元素表示方式（孔/障碍/保温显示）。只改显示。官方逐字：REPR HOLES(DRMPGC15.05.15) ON='更真实孔洞视图，孔后物体可透视'/OFF='把孔表示为构件表面图案区域'；REPR OBST/INSU(DRMPGC15.05.10) 子项 OBSTruction/INSUlation ON/OFF + 可选 TRANSLucency value(0–99，就近取 25/50/75/87)。铁路 `*` 循环节点=一条命令可连设多项。最小缩写 REPResentation(REPR)+HOLes/OBSTruction/INSUlation。刷新用 REPR UPDATE(见 e3d-cmd-display-update)。Q REPR/Q REPR HOLES/Q REPR OBST/Q REPR INSU TRANSL 查各状态。返回: 无返回值，重设显示表示。附录④.misc。",
+    "manualRef": "DRMPGC15.05.15",
+    "confidence": "official-verbatim",
+    "aliases": [
+      "REPResentation"
+    ]
+  },
+  {
+    "id": "e3d-cmd-display-axes",
+    "command": "AXES",
+    "category": "display",
+    "syntax": "  .-----------<-------------------------.\n  |                                     |\n>-- AXEs --*-- HEIght <value> ----------------------+\n           |-- AT <bpos> --------------------------|\n           |-- AT POLar <bdir> DISTance <uval> ----|\n           |-- AT @ -------------------------------|\n           |-- ON ---------------------------------|\n           |-- OFF --------------------------------|\n           '-- DELete -----------------------------+-->",
+    "examples": [
+      "AXES AT @",
+      "AXES HEIGHT 300 AT @",
+      "AXES OFF",
+      "AXES ON",
+      "AXES DELETE"
+    ],
+    "notes": "在 3D 视图放置/控制坐标轴标记（只改显示）。最小缩写 AXE。HEIGHT <value> 轴高(mm)；AT <bpos> 放到位置；AT POLAR <bdir> DISTANCE 极坐标定位；AT @ 放到图形光标处。ON/OFF 显隐(不删)，DELETE 永久删除。可循环组合。DRMPGC15.05.18。附录③.8。",
+    "manualRef": "DRMPGC15.05.18",
+    "confidence": "official-verbatim",
+    "aliases": []
+  },
+  {
+    "id": "e3d-cmd-display-mark",
+    "command": "MARK",
+    "category": "display",
+    "syntax": ">-- MArk --+-- WITH <text expression> --.\n           |                             |\n           '-----------------------------+-- <selatt> -->\n\n>-- UNMark -- <selatt> -->        （UNMARK ALL：清除全部标注）",
+    "examples": [
+      "MARK /DATUM5",
+      "MARK WITH 'Outer Boundary' ID @",
+      "MARK WITH NAME ALL BRAN",
+      "UNMARK ALL"
+    ],
+    "notes": "在屏幕上给元素贴文字标签（只改显示）。最小缩写 MA。无 WITH 时用元素名标注；WITH <text expr> 自定义文本。<selatt> 可 ID @ 拾取或 ALL <type> WHERE(...) 批量。UNMARK 撤销（UNMARK ALL 清屏）。DRMPGC15.05.19。附录③.8。",
+    "manualRef": "DRMPGC15.05.19",
+    "confidence": "official-verbatim",
+    "aliases": [
+      "UNMARK"
+    ]
+  },
+  {
+    "id": "e3d-cmd-display-update",
+    "command": "UPDATE",
+    "category": "display",
+    "syntax": ">-- REPResentation -- UPDATE -->",
+    "examples": [
+      "REPR UPDATE"
+    ],
+    "notes": "刷新图形显示（只改显示）。改了表示(representation)设置后无需从 Draw List 移除再加回，直接重绘。单独 UPDATE 动词以 REPResentation UPDATE 形式出现。DRMPGC15.05.17。附录③.8。",
+    "manualRef": "DRMPGC15.05.17",
+    "confidence": "official-verbatim",
+    "aliases": []
+  },
+  {
+    "id": "e3d-cmd-display-aid",
+    "command": "AID",
+    "category": "display",
+    "syntax": ">- AID LINE ----+- NUMber <int> -+- <bpos> TO <bpos> --+- LINEStyle -+- SOLId|DASHEd|DOTTEd|DASHDot -->\n>- AID TEXT ---- NUMber <int> <text_expression> AT <bpos> ->\n>- AID ARROW ---+- NUMber <int> -+- AT <bpos> DIRection <bdir> [HEIght <val>] [PROPortion <val>] ->\n>- AID CEARROW -+- ON|OFF [HEIght <val>] [PROPortion <val>] -+- ARRIVE|LEAVE|ORIGIN -->\n>- AID ARC -----+- NUMber <int> -+- <bpos> TO <bpos> -+- TANPoint <bpos> | THRU <bpos> -->\n>- AID SPHERE --+- NUMber <int> -+- <bpos> DIAmeter <expre> ->\n>- AID BOX -----+- NUMber <int> -*- POSition <bpos>|ORIentation <ori>|XLENgth|YLENgth|ZLENgth <expre>|FILLed ON|OFF -->\n>- AID CYLinder-+- NUMber <int> -*- POSition <bpos>|AT <bpos>|ORIentation <ori>|DIAmeter|HEIght <expre>|FILLed ON|OFF -->\n>- AID CLEAR ---+- ALL|LINE|ARROW|CEARROW|ARC|SPHERE|BOX|CYLInder [<int>|ALL|UNNumbered] -->",
+    "examples": [
+      "AID LINE E1200S3500U0 TO E760N1200U50",
+      "AID ARROW AT E760N1200U50 DIR E HEI 100 PROP 0.5",
+      "AID BOX NUMBER 1 POSITION E100N0U0 XLENGTH 500 YLENGTH 500 ZLENGTH 500",
+      "AID CLEAR ALL"
+    ],
+    "notes": "设计辅助图元（临时几何，不入模型库，只改显示）：LINE/TEXT/ARROW/CEARROW(当前元素箭头)/ARC/SPHERE/BOX/CYLINDER。NUMBER <int> 给编号便于 CLEAR。AID CLEAR 按类型/编号/全部清除。DRMPGC15.05.20。附录③.8。",
+    "manualRef": "DRMPGC15.05.20",
+    "confidence": "official-verbatim",
+    "aliases": [
+      "AIDLIN",
+      "AIDPOI"
+    ]
+  },
+  {
+    "id": "e3d-cmd-route",
+    "command": "ROUTE",
+    "category": "modeling",
+    "syntax": ">-- ROute --+-- WIth --+-- ELbows --.\n            |          |            |\n            |          '-- BEnds ---| .-----<----.\n            |                       |/          |\n            '-----------------------+-*- <sgid> -->",
+    "examples": [
+      "ROUTE /PIPES",
+      "ROUTE WITH BENDS /PIPES"
+    ],
+    "notes": "自动布管命令，仅在 AUTOROUTE 子模式内可用（先 AUTOROUTE 进入、EXIT 退出，DRMPCM25.10.03）。ROute=最小缩写 RO；WIth ELbows/BEnds 二选一（缺省 Elbows；WITH BENDS 优先弯管而非弯头）；<sgid> 可循环列多个待布管选择组，前置：Branch 须为空且已设 Head/Tail 引用。DRMPCM25.10.08。附录③.9。",
+    "manualRef": "DRMPCM25.10.08",
+    "confidence": "official-verbatim",
+    "aliases": []
+  },
+  {
+    "id": "e3d-cmd-blacklist-cut",
+    "command": "CUT",
+    "category": "editing",
+    "syntax": "（无命令行语法）",
+    "examples": [],
+    "notes": "官方裁决：命令行无此语法，勿用。Pipe Split（切分）仅存在于 GUI *Split Pipe* 窗口（PDUV/2.1 PDUV7.4.4 'Pipe Splitting'），底层通过'插入 pipe assemblies / 新建 BRAN/PIPE'实现。Agent 若需程序化切管，须走'在切点插入组件 + 重设头尾 + 新建分支'，不得发 CUT 命令。⚠ 三轮负向确认（附录④.editing）：以 'CUT' 开头的命令**只**在 ISODRAFT 存在——CUTBACK(ISORM3.03.034)/CUTMARKS(3.03.035)/CUTPIPELISTFILE(3.03.036)/CUTTINGLIST(3.03.037)，均为等轴图输出注记/绘图命令，**不编辑 3D 几何**。故 CUT 作为 3D 建模动词 = 黑名单成立。附录①黑名单。",
+    "manualRef": "PDUV7.4.4",
+    "confidence": "unverified",
+    "aliases": []
+  },
+  {
+    "id": "e3d-cmd-blacklist-split",
+    "command": "SPLIT",
+    "category": "editing",
+    "syntax": "（无命令行语法）",
+    "examples": [],
+    "notes": "官方裁决：命令行无此语法（作 3D 建模动词），勿用。Pipe Split 仅存在于 GUI *Split Pipe* 窗口（PDUV/2.1 PDUV7.4.4 'Pipe Splitting'，逐字：'All of the tasks that are associated with the splitting of pipes is initiated from a central Split Pipe window which acts as a task hub'）。程序化切管须走'插入组件 + 重设头尾 + 新建分支'，不得发 SPLIT 命令。⚠ 三轮负向确认（附录④.editing）：一条字面名为 'SPLIT' 的命令**确实存在但只在 ISODRAFT**(ISORM3.03.103)——控制管线跨多张图纸时的图幅数（'>--- SPLIt --- value ---+--- DRwgs | PERCent -->'，如 'SPLIt 3 DRwgs'/'SPLIt 75 PERCent'），是等轴图输出，**非 3D 几何**。故 SPLIT 作为 3D 建模动词 = 黑名单成立。附录①黑名单。",
+    "manualRef": "PDUV7.4.4",
+    "confidence": "unverified",
+    "aliases": []
+  },
+  {
+    "id": "e3d-cmd-blacklist-gap",
+    "command": "GAP",
+    "category": "editing",
+    "syntax": "（无命令行语法）",
+    "examples": [],
+    "notes": "官方裁决：命令行无此语法，勿用。GAP（作为切分/合并动词）DRMPGC 无逐字命令记载，疑似臆造。间隙用官方 CLEARANCE（第 8 章）。⚠ 三轮负向确认（附录④.editing）：DRMPGC 定位命令组(23.08.x)与 ISORM 命令表标题中均无 GAP 页；GAP 作为管道概念只以 GUI Split Pipe/装配工作流里的属性/leave-length 存在，非命令行动词。附录①黑名单。",
+    "manualRef": "",
+    "confidence": "unverified",
+    "aliases": []
+  },
+  {
+    "id": "e3d-cmd-blacklist-join",
+    "command": "JOIN",
+    "category": "editing",
+    "syntax": "（无命令行语法）",
+    "examples": [],
+    "notes": "官方裁决：命令行无此语法，勿用。JOIN（作为切分/合并动词）DRMPGC 无逐字命令记载，疑似臆造。合并须走 GUI/PML 宏。⚠ 三轮负向确认（附录④.editing）：DRMPGC/ISORM 命令表标题中均无 JOIN 页；重连/合并已切分的管道走 GUI Split Pipe 窗口/装配管理器(PDUV)，非 JOIN 动词；模型内元素连通用 CONNECT/CONN（另一条独立命令）。附录①黑名单。",
+    "manualRef": "",
+    "confidence": "unverified",
+    "aliases": []
+  },
+  {
+    "id": "e3d-cmd-bang",
+    "command": "BANG",
+    "category": "direction",
+    "syntax": ">-- BANGle value -->\n\n查询：Q BANGle",
+    "examples": [
+      "BANG 90",
+      "BANGLE 45",
+      "Q BANG"
+    ],
+    "notes": "BANG = Beta ANGle，结构截面(SCTN)的方位属性——**不是**独立的“绕轴转角动作命令**。官方逐字（DRMPGC 3.1 Section Attributes: Orientation Angle，DRMPCM26.11.09）：'controls rotational orientation of a structural section around its neutral axis'，旋转量=从 POSS 朝 POSE 方向观察的顺时针角='the angle of rotation from the default orientation'。最小缩写 BANGle(BANG)；value=角度数值。1.1 Standard Component Attributes(DRMPCM24.09.22) 只列通用 ANGLE 不含 BANG（BANG 属钢结构截面非管件），逐字语法取自可抓的 3.1 分支。Q BANG 返回当前 Beta 角(度)。返回: 设置/查询结构截面 Beta 角。附录④.misc。",
+    "manualRef": "DRMPCM26.11.09",
+    "confidence": "official-verbatim",
+    "aliases": [
+      "BANGle"
+    ]
+  },
+  {
+    "id": "e3d-cmd-reorder",
+    "command": "REORDER",
+    "category": "editing",
+    "syntax": "REOrder element_id [ BEFore | AFTer list_position ]",
+    "examples": [
+      "REORDER /ELBO3",
+      "REORDER /ELBO3 BEFORE FIRST ELBO"
+    ],
+    "notes": "在 CE 的成员表内重排一个已存在成员的位置（层级重组，DBRM4.05.5，INCLUDE 的同页兄弟命令）。可选 BEFore/AFTer list_position。最小缩写 REO/BEF/AFT。附录③.2。",
+    "manualRef": "DBRM4.05.5",
+    "confidence": "official-verbatim",
+    "aliases": [
+      "REO",
+      "REORDER"
+    ]
+  },
+  {
+    "id": "e3d-cmd-q-claimlist",
+    "command": "Q CLAIMLIST",
+    "category": "query",
+    "syntax": ">-- Q CLAIMLIST --+- OTHER -----.\n                  |- EXTRACT ---+- OTHER --.\n                  |             |- FREE ---|\n                  |             '----------|\n                  |------------------------+-- DB dbname --.\n                  '----------------------------------------+-->",
+    "examples": [
+      "Q CLAIMLIST",
+      "Q CLAIMLIST OTHER",
+      "Q CLAIMLIST EXTRACT",
+      "Q CLAIMLIST EXTRACT DB /PIPE-EXTRACT",
+      "Q CLAIMLIST EXTRACT FREE DB dbname"
+    ],
+    "notes": "查询当前 claim 情况（CLAIM 前判断可 claim 范围）。Q CLAIMLIST=自己已 claim 的元素；OTHER=其他用户已 claim（=你不能 claim 的）；EXTRACT=可写 extract 的 claimlist（=你能 flush 的）。口诀：Q CLAIMLIST EXTRACT 告诉你能 flush 什么、Q CLAIMLIST OTHER 告诉你不能 claim 什么。DBRM6.07.5。附录③.6。",
+    "manualRef": "DBRM6.07.5",
+    "confidence": "official-verbatim",
+    "aliases": [
+      "Q CLAIMLIST"
+    ]
+  },
+  {
+    "id": "e3d-cmd-autocolour",
+    "command": "AUTOCOLOUR",
+    "category": "display",
+    "syntax": ">- AUTOCOLOUR -+- <selection_rule> COLOUR <expression> -+- TRANSLucency <expression> -+->\n               |                                       '- EDGES ON | OFF ------------|\n               |- ON | OFF -----------------------------------------------------------|\n               |- DYNAMIC ON | OFF ----------------------------------------------------|\n               |- RESET ---------------------------------------------------------------|\n               |- REMOVE <integer> ----------------------------------------------------|\n               '- REORDER <integer1> TO <integer2> ------------------------------------+->",
+    "examples": [
+      "AUTOCOLOUR ALL EQUI COLOUR 4",
+      "AUTOCOLOUR ALL BRAN WITH (HBORE GT 100) COLOUR 10",
+      "AUTOCOLOUR ON",
+      "AUTOCOLOUR DYNAMIC ON",
+      "AUTOCOLOUR RESET"
+    ],
+    "notes": "按规则给 ADD 进来的元素自动着色（同章 Display，ADD 的自动配色伴侣，只改显示）。<selection_rule> 如 ALL EQUI / ALL BRAN WITH(...)。ON/OFF 总开关；DYNAMIC ON 属性变化时重算；RESET 清所有规则；REMOVE <n> 删第 n 条；REORDER 调优先级。Q AUTOCOLOUR FOR <id> COLOUR 查某元素将取的色。DRMPGC15.05.03。附录③.8。",
+    "manualRef": "DRMPGC15.05.03",
+    "confidence": "official-verbatim",
+    "aliases": []
+  },
+  {
+    "id": "e3d-cmd-autoroute",
+    "command": "AUTOROUTE",
+    "category": "modeling",
+    "syntax": ">-- AUTOROUTE -->\n>-- EXIT -->",
+    "examples": [
+      "AUTOROUTE",
+      "EXIT"
+    ],
+    "notes": "进入/退出自动布管子模式。AUTOROUTE 进入后命令语法被限制为自动布管与 rack 排序所需命令（ROUTE/WEIGH/RACK/SPREAD/BOP 等）；EXIT 返回完整 MODEL 语法。是 ROUTE 命令的必要上下文（ROUTE 只在此子模式内可用）。DRMPCM25.10.03。附录③.9。",
+    "manualRef": "DRMPCM25.10.03",
+    "confidence": "official-verbatim",
+    "aliases": [
+      "EXIT"
+    ]
+  },
+  {
+    "id": "e3d-cmd-nav-world-refno-same",
+    "command": "WORLD",
+    "category": "navigation",
+    "syntax": "/*  |  WORLD                              跳到 DB 顶（World）\n=<n>/<n>                                用引用号(refno)直跳\nSAME                                    返回上一个 CE\n<type> <int> OF <owner-name> ...        构造名：按类型+相对位链式定位",
+    "examples": [
+      "/*",
+      "WORLD",
+      "=1234/5678",
+      "SAME",
+      "NBOX 1 OF CYL 2 OF EQUI 4 OF ZONE 9 OF /MYSITE"
+    ],
+    "notes": "绝对/相对 CE 导航 token 集：WORLD 或 /* 跳到 DB 顶（等价，DBRM2.03.08）；=n/n 用 refno 直跳（DBRM2.03.09）；SAME 返回上一个 CE（DBRM2.03.19）；构造名 <type> <int> OF <owner>（可 OF 链式，UDET 用 : 前缀，DBRM2.03.07）。附录③.7。",
+    "manualRef": "DBRM2.03.08",
+    "confidence": "official-verbatim",
+    "aliases": [
+      "/*",
+      "SAME"
+    ]
+  },
+  {
+    "id": "e3d-cmd-var-delete",
+    "command": ".Delete()",
+    "category": "variable",
+    "syntax": "!VarName.Delete()   或   !!GlobalVar.Delete()",
+    "examples": [
+      "!!Y.Delete()",
+      "!localvar.Delete()"
+    ],
+    "notes": "PML2 变量删除：.Delete() 方法使已存在变量变为 UNDEFINED（1.1 SOFTCG 无 VAR EXPUNGE 关键字）。⚠ 官方加粗警告：不得删除对象/表单的成员。全局 !! 变量持续整个 session 直到删除。SOFTCG3.03.26。附录③.5。",
+    "manualRef": "SOFTCG3.03.26",
+    "confidence": "official-verbatim",
+    "aliases": []
+  }
+]

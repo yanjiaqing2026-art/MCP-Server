@@ -21,10 +21,27 @@ namespace E3DMcpServer.Tools
             return E3dToolDefinitions.All;
         }
 
+        // P1 第 2 层（指导书 2026-07-02）：危险工具确认门——删除/落库/整库提取/强制连接
+        // 必须显式带 confirm="true" 才执行，防 Agent 一句话误删生产库。
+        private static readonly HashSet<string> Dangerous = new HashSet<string>
+        {
+            "e3d_element_delete", "e3d_db_save", "e3d_db_extract", "e3d_force_connect",
+        };
+
         public ToolCallResult ExecuteTool(string toolName, JObject args)
         {
             try
             {
+                if (Dangerous.Contains(toolName))
+                {
+                    string confirm = args?["confirm"]?.ToString();
+                    if (!string.Equals(confirm, "true", StringComparison.OrdinalIgnoreCase))
+                    {
+                        return Ok($"Error: '{toolName}' 是危险操作：请向用户确认后带 confirm=\"true\" 重试。"
+                            + $"当前目标: {args?["name"]?.ToString() ?? args?["type"]?.ToString() ?? "(未指定)"}");
+                    }
+                }
+
                 switch (toolName)
                 {
                     // ── 查询 ──
@@ -49,12 +66,17 @@ namespace E3DMcpServer.Tools
 
                     // ── PML ──
                     case "e3d_pml_exec":           return HandlePmlExec(args);
+                    // ★2026-07-29 新增（未编译验证，见各自实现的头注）
+                    case "e3d_pml_exec_verbose":   return HandlePmlExecVerbose(args);
+                    case "e3d_csg_dump":           return HandleCsgDump(args);
                     case "e3d_pml_eval":           return HandlePmlEval(args);
 
                     // ── 批量 ──
                     case "e3d_batch_read":         return HandleBatchRead(args);
                     case "e3d_batch_set":          return HandleBatchSet(args);
                     case "e3d_collect":            return HandleCollect(args);
+                    case "e3d_collect_geometry":   return HandleCollectGeometry(args);
+                    case "e3d_export_rvm":         return HandleExportRvm(args);
                     case "e3d_pipeline_export":    return HandlePipelineExport(args);
 
                     // ── 导航 ──
@@ -101,6 +123,7 @@ namespace E3DMcpServer.Tools
 
                     // ── 规格/目录 ──
                     case "e3d_spec_query":         return HandleSpecQuery(args);
+                    case "e3d_spec_list":          return HandleSpecList(args);
                     case "e3d_bom":                return HandleBom(args);
                     case "e3d_component_info":     return HandleComponentInfo(args);
 
@@ -245,6 +268,50 @@ namespace E3DMcpServer.Tools
             return Ok(sb.ToString());
         }
 
+        // 2026-06-15: 返回真实几何组件(含世界坐标), 供实时 3D 镜像 E3D 显示。
+        ToolCallResult HandleCollectGeometry(JObject a)
+        {
+            var root = a?["root"]?.Value<string>();
+            int max = a?["max"]?.Value<int>() ?? 2000;
+            if (max <= 0) max = 2000;
+            var results = _api.CollectGeometry(root, max);
+            var sb = new StringBuilder();
+            sb.AppendLine($"geometry: {results.Count} components" + (!string.IsNullOrEmpty(root) ? $" (root: {root})" : ""));
+            foreach (var e in results)
+            {
+                var line = $"  [{e.Type}] {e.Name}" + (e.X.HasValue ? $" @ ({e.X},{e.Y},{e.Z})" : "");
+                // 2026-06-21 真几何：把读到的几何属性拼成 `|KEY=VAL` 后缀（前端 sceneFromMcp.parseGeomSuffix
+                // 解析）。单 token 化：去掉换行/竖线避免破坏后缀分隔。无属性时不加后缀 → 老格式向后兼容。
+                if (e.Attributes != null)
+                {
+                    foreach (var kv in e.Attributes)
+                    {
+                        var val = kv.Value?.ToString();
+                        if (string.IsNullOrWhiteSpace(val)) continue;
+                        val = val.Replace("\r", " ").Replace("\n", " ").Replace("|", "/").Trim();
+                        line += $"|{kv.Key}={val}";
+                    }
+                }
+                sb.AppendLine(line);
+            }
+            return Ok(sb.ToString());
+        }
+
+        // 2026-06-21「从 E3D 拉真几何」：导出真实 RVM 网格供前端用现成 loadRvm 加载（真 CAD 形状）。
+        // 返回 JSON {ok,path,name}，前端 Canvas3D.parseRvmExport 解析后经 Electron fileOps 读该文件。
+        ToolCallResult HandleExportRvm(JObject a)
+        {
+            var root = a?["root"]?.Value<string>();
+            string path = _api.ExportRvm(root);
+            if (string.IsNullOrEmpty(path))
+            {
+                var err = new JObject { ["ok"] = false, ["error"] = $"RVM 导出失败: {_api.LastExportError ?? "需真 E3D + EXPORT 可用（当前可能无可导出元素）"}" };
+                return Ok(err.ToString(Newtonsoft.Json.Formatting.None));
+            }
+            var obj = new JObject { ["ok"] = true, ["path"] = path, ["name"] = System.IO.Path.GetFileName(path) };
+            return Ok(obj.ToString(Newtonsoft.Json.Formatting.None));
+        }
+
         ToolCallResult HandleProjectInfo()
         {
             var info = _api.GetProjectInfo();
@@ -284,7 +351,10 @@ namespace E3DMcpServer.Tools
         {
             var t = a?["type"]?.Value<string>();
             var n = a?["name"]?.Value<string>();
-            var owner = a?["owner"]?.Value<string>();
+            // 2026-06-17：兼容 owner / parent 两种参数名。09 agent 侧历史上两种都发过、还有不发的，
+            // 而这里原来只读 owner → 拿到 null → 元素未 MOVE 到正确父级 → 落在 CE/根 → NEW 在错误层级
+            // E3D 报 (41,8)。读 owner 优先、parent 兜底，杜绝因参数名漂移导致的层级错误。
+            var owner = a?["owner"]?.Value<string>() ?? a?["parent"]?.Value<string>();
             if (string.IsNullOrWhiteSpace(t) || string.IsNullOrWhiteSpace(n))
                 return Err("请提供type和name参数。");
             return Ok(_api.CreateElement(t, n, owner));
@@ -330,7 +400,31 @@ namespace E3DMcpServer.Tools
         {
             var cmd = a?["command"]?.Value<string>();
             if (string.IsNullOrWhiteSpace(cmd)) return Err("请提供command参数。");
+            // 命令黑名单守卫：官方确认不存在的伪命令(CUT/SPLIT/GAP/JOIN)直接诚实拦回，不发给 E3D。
+            if (E3dCommandReference.IsBlacklisted(cmd, out var badVerb)) return Ok(E3dCommandReference.BlacklistError(badVerb));
             return Ok(_api.ExecutePml(cmd));
+        }
+
+        /// <summary>执行 PML 并把 E3D 打印的输出一起带回（见 E3dOutputCapture 头注）。⚠ 未编译验证。</summary>
+        ToolCallResult HandlePmlExecVerbose(JObject a)
+        {
+            var cmd = a?["command"]?.Value<string>();
+            if (string.IsNullOrWhiteSpace(cmd)) return Err("请提供command参数。");
+            // 与 e3d_pml_exec 同一道黑名单守卫 —— 新工具不能成为绕过既有闸的后门。
+            if (E3dCommandReference.IsBlacklisted(cmd, out var bad2)) return Ok(E3dCommandReference.BlacklistError(bad2));
+            return Ok(_api.RunPmlVerbose(cmd));
+        }
+
+        /// <summary>读元素的真实几何图元（尺寸 + 变换矩阵）。⚠ 未编译验证，见 E3dCsgDump 头注。</summary>
+        ToolCallResult HandleCsgDump(JObject a)
+        {
+            var name = a?["name"]?.Value<string>();
+            if (string.IsNullOrWhiteSpace(name)) return Err("请提供name参数。");
+            int max = a?["max"]?.Value<int>() ?? 200;
+            bool ins = a?["insulation"]?.Value<bool>() ?? false;
+            bool obs = a?["obstruction"]?.Value<bool>() ?? false;
+            bool cl = a?["centerline"]?.Value<bool>() ?? false;
+            return Ok(E3dCsgDump.Dump(name, max, ins, obs, cl));
         }
 
         ToolCallResult HandlePmlEval(JObject a)
@@ -453,6 +547,7 @@ namespace E3DMcpServer.Tools
 
         // ── 规格/目录 ──
         ToolCallResult HandleSpecQuery(JObject a) => Ok(_api.SpecQuery(a?["spec"]?.Value<string>()));
+        ToolCallResult HandleSpecList(JObject a) => Ok(_api.SpecList(a?["max"]?.Value<int>() ?? 500));
         ToolCallResult HandleBom(JObject a) { var n = a?["name"]?.Value<string>(); return string.IsNullOrWhiteSpace(n) ? Err("name required") : Ok(_api.BOM(n)); }
         ToolCallResult HandleComponentInfo(JObject a) => Ok(_api.ComponentInfo(a?["name"]?.Value<string>()));
 
@@ -496,44 +591,47 @@ namespace E3DMcpServer.Tools
             return Ok(_api.JoinPipe(n1, n2));
         }
 
+        // P2①配套（巡检揪出的残留矛盾）：schema 已把 at 降为可选（实现里本就不生效），
+        // handler 不再硬要求——缺参取 0，按新 schema 省略 at 的合法调用不再报错。
+        static double OptionalAt(JObject a)
+        {
+            double at;
+            return TryNum(a, "at", out at) ? at : 0;
+        }
+
         ToolCallResult HandlePipeBend(JObject a)
         {
             var n = a?["name"]?.Value<string>();
             if (string.IsNullOrWhiteSpace(n)) return Err("name required");
-            if (!TryNum(a, "at", out double at)) return Err("at must be a number");
-            return Ok(_api.BendPipe(n, at, a?["stype"]?.Value<string>()));
+            return Ok(_api.BendPipe(n, OptionalAt(a), a?["stype"]?.Value<string>()));
         }
 
         ToolCallResult HandlePipeTee(JObject a)
         {
             var n = a?["name"]?.Value<string>();
             if (string.IsNullOrWhiteSpace(n)) return Err("name required");
-            if (!TryNum(a, "at", out double at)) return Err("at must be a number");
-            return Ok(_api.TeePipe(n, at, a?["stype"]?.Value<string>()));
+            return Ok(_api.TeePipe(n, OptionalAt(a), a?["stype"]?.Value<string>()));
         }
 
         ToolCallResult HandlePipeValve(JObject a)
         {
             var n = a?["name"]?.Value<string>();
             if (string.IsNullOrWhiteSpace(n)) return Err("name required");
-            if (!TryNum(a, "at", out double at)) return Err("at must be a number");
-            return Ok(_api.ValvePipe(n, at, a?["stype"]?.Value<string>()));
+            return Ok(_api.ValvePipe(n, OptionalAt(a), a?["stype"]?.Value<string>()));
         }
 
         ToolCallResult HandlePipeFlange(JObject a)
         {
             var n = a?["name"]?.Value<string>();
             if (string.IsNullOrWhiteSpace(n)) return Err("name required");
-            if (!TryNum(a, "at", out double at)) return Err("at must be a number");
-            return Ok(_api.FlangePipe(n, at, a?["stype"]?.Value<string>()));
+            return Ok(_api.FlangePipe(n, OptionalAt(a), a?["stype"]?.Value<string>()));
         }
 
         ToolCallResult HandlePipeReducer(JObject a)
         {
             var n = a?["name"]?.Value<string>();
             if (string.IsNullOrWhiteSpace(n)) return Err("name required");
-            if (!TryNum(a, "at", out double at)) return Err("at must be a number");
-            return Ok(_api.ReducerPipe(n, at));
+            return Ok(_api.ReducerPipe(n, OptionalAt(a)));
         }
 
         ToolCallResult HandlePipeRoute(JObject a)
@@ -707,11 +805,20 @@ namespace E3DMcpServer.Tools
 
         // ── helpers ──
 
-        static ToolCallResult Ok(string text) => new ToolCallResult
+        // 2026-06-29 MCP 诚实化：_api 的业务失败一律以 "Error:" 开头（CreateElement / RunWrite / DbSave /
+        // 16 个写命令）。原 Ok() 无条件 IsError=false，把失败包进"成功"信封 → 09 侧 json.result.isError 恒
+        // false，只能靠文本嗅探兜底、插件改文案即漏。这里让 Ok() 自动把失败串提升为 IsError=true，使失败
+        // 在**传输层**就诚实可见（与 09 isE3DFailReceipt 文本嗅探双保险）。正常数据/回执不以 Error/错误 开头。
+        static ToolCallResult Ok(string text)
         {
-            Content = new List<ContentBlock> { new ContentBlock { Type = "text", Text = text } },
-            IsError = false
-        };
+            bool fail = !string.IsNullOrEmpty(text)
+                && (text.StartsWith("Error", System.StringComparison.OrdinalIgnoreCase) || text.StartsWith("错误"));
+            return new ToolCallResult
+            {
+                Content = new List<ContentBlock> { new ContentBlock { Type = "text", Text = text } },
+                IsError = fail
+            };
+        }
 
         static ToolCallResult Err(string text) => new ToolCallResult
         {

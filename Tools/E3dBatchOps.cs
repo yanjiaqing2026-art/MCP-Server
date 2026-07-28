@@ -129,7 +129,8 @@ namespace E3DMcpServer.Tools
                 else { failElems++; sb.AppendLine($"  [{i}] PARTIAL {name}: {innerFail}/{attrs.Count} attrs failed"); }
             }
             sb.AppendLine($"summary: elements_ok={okElems} elements_fail={failElems} attr_writes={attrCount} attr_fails={attrFails}");
-            return failElems == 0 ? Ok(sb.ToString()) : MaybeErr(sb.ToString(), false);
+            // P2-C 巡检修：全部元素失败时 IsError 也要为真（原来写死 false，与 batch_create 口径不一致）。
+            return failElems == 0 ? Ok(sb.ToString()) : MaybeErr(sb.ToString(), okElems == 0);
         }
 
         // ── helpers ─────────────────────────────────────────────────────

@@ -36,6 +36,13 @@ namespace E3DMcpServer.Tools
                    P("max:integer:最大返回数,默认50。可选。"),
                    R("type")),
 
+                T("e3d_collect_geometry", "递归收集模型里**有真实世界坐标的几何组件**(TUBE/ELBO/TEE/法兰/阀门/喷嘴/设备等),供实时 3D 镜像 E3D 真实显示。区别于 e3d_search 只返回管线头(容器节点,坐标退化→前端会把多根管叠成一点)。从 root 递归下钻,纯容器(SITE/ZONE/PIPE/BRAN,坐标退化)只下钻不收集。返回格式: 'geometry: N components\\n  [TYPE] /NAME @ (X,Y,Z)'。",
+                   P("root:string:起始路径,留空或 /* 表示整库。可选。"),
+                   P("max:integer:最大返回组件数,默认2000。可选。")),
+
+                T("e3d_export_rvm", "导出真实 RVM 网格几何(AVEVA 原生 EXPORT)到本机临时文件,供实时 3D 用与「模型审查」同款加载器显示**真 CAD 形状**(非 e3d_collect_geometry 的示意基本体)。返回 JSON: {ok:true,path,name} 或 {ok:false,error}。root 留空=导出当前选中(CE)。比 e3d_collect_geometry 重(几MB/几秒),按需调用。",
+                   P("root:string:起始路径,留空=当前选中元素(CE)。可选。")),
+
                 T("e3d_project_info", "获取 E3D 项目信息。返回: 项目名(project), 数据库(mdb), 当前用户(user), 当前模块(module)。用于确认当前工作环境。", NoParams()),
 
                 T("e3d_measure", "测量两个元素之间的直线距离。返回格式: 'Distance: 2500.000 mm (dX=... dY=... dZ=...)'. 用于检查管道间距、碰撞评估。",
@@ -62,9 +69,10 @@ namespace E3DMcpServer.Tools
                    P("owner:string:父元素路径,如 '/*' 或 '/ZONE-01'。可选, 默认当前 CE 的 owner。"),
                    R("type", "name")),
 
-                T("e3d_element_delete", "删除 E3D 中的元素。⚠ 不可逆! 删除前建议先 SAVEWORK。name 必须用完整路径。返回格式: 'OK: deleted NAME'。",
+                T("e3d_element_delete", "删除 E3D 中的元素。⚠ 不可逆! 删除前建议先 SAVEWORK。name 必须用完整路径。危险操作：必须先向用户确认，再带 confirm='true' 调用，否则被拒。返回格式: 'OK: deleted NAME'。",
                    P("name:string:要删除的元素完整路径。必填。"),
-                   R("name")),
+                   P("confirm:string:危险操作确认，必须显式传 'true'（先向用户确认）。必填。"),
+                   R("name", "confirm")),
 
                 T("e3d_element_rename", "重命名 E3D 元素。例: 将 /PIPE-OLD 改为 /PIPE-NEW。返回格式: 'OK: renamed OLD to NEW'。",
                    P("name:string:当前完整路径。必填。"),
@@ -82,11 +90,23 @@ namespace E3DMcpServer.Tools
                    R("name", "new_owner")),
 
                 // ══ PML ══════════════════════════════════
-                T("e3d_pml_exec", "在 E3D 中执行任意 PML 命令。🚨 完全数据库访问权限, 请谨慎! 支持所有 PML 语法: NEW/DELETE/MOVE/BY/POS/SAVEWORK/UNDO 等。PML 语法: 元素操作如 'NEW PIPE /NAME', 属性设置如 '!!CE.ODIA = 219.1', 查询如 'Q VAR !!CE.ODIA'。返回格式: 'Command executed.' 或错误信息。建议先用 e3d_pml_eval 试运行。",
+                T("e3d_pml_exec", "在 E3D 中执行任意 PML 命令(真写库)。🚨 完全数据库访问权限, 请谨慎! 支持所有 PML 语法: NEW/DELETE/MOVE/BY/POS/SAVEWORK/UNDO 等。PML 语法: 元素操作如 'NEW PIPE /NAME', 属性设置如 '!!CE.ODIA = 219.1', 查询如 'Q VAR !!CE.ODIA'。返回 'Command executed.' 或错误信息。⚠ 建模/定位/连接类动词(ROTATE/CONNECT/POS…)作用于 CE(当前元素)、不接前导元素名——先 '!!CE = /目标' 导航再发裸命令。⚠ e3d_pml_eval 只求值表达式、【不能】对建模命令做语法 dry-run。",
                    P("command:string:完整 PML 命令字符串。必填。"), R("command")),
 
-                T("e3d_pml_eval", "求值 PML 表达式并返回结果(不修改数据库)。用于安全地计算值或测试表达式。例: expression='!!CE.ODIA' 返回当前外径值, expression='2 * 3.14159 * 100' 返回计算结果。",
-                   P("expression:string:PML 表达式。必填。"), R("expression")),
+                // ★2026-07-29 新增两个（⚠ 未编译验证，见各自 .cs 头注的确认步骤）
+                T("e3d_pml_exec_verbose", "执行 PML 命令并**把 E3D 打印到命令窗口的输出一起带回来**。与 e3d_pml_exec 的区别: 后者只回'成/败 + 失败时的报错', 成功时零内容, 而 Q SPEC / $Q / LIST 这类【打印型】命令的结果全进命令窗口拿不到。用它可以真正读到: $Q 语法提示(官方的下一个合法命令词, 手册说'真机 $Q 为准')、Q SPEC 的规格清单、Q ATT 的属性表。回执分两段: 命令成败 + E3D 输出; ★捕获失败会单独说明 —— 那只说明【我们没听见】, 不说明命令没输出、更不说明命令失败。",
+                   P("command:string:完整 PML 命令字符串。必填。"), R("command")),
+
+                T("e3d_csg_dump", "读一个元素的**真实几何图元**: 类型(BOX/CYLINDER/DISH/SNOUT/CTORUS…)、真实尺寸、以及**变换矩阵**。区别于 e3d_collect_geometry(只回 @ (X,Y,Z) 位置 + 几个字符串属性, 没有包围盒/变换/真尺寸)。用于: 判断图元的局部原点在哪(如 DISH 封头原点在底面还是拱顶)、取保温包络与障碍体的真实尺寸、写后验收比几何而不只比属性。返回格式: 'csg: N primitives (root: X)\\n  [DISH] 名|CSGTYPE=..|RADIUS=..|HEIGHT=..|TRANSFORM=[n]{..}'。★变换矩阵原样回传不做解释(行/列主序未经证实, 猜一个说法比不说更坏)。",
+                   P("name:string:元素路径。必填。"),
+                   P("max:integer:最多返回多少个图元, 默认200。可选。"),
+                   P("insulation:boolean:是否包含保温包络几何, 默认 false。可选。"),
+                   P("obstruction:boolean:是否包含障碍体几何, 默认 false。可选。"),
+                   P("centerline:boolean:是否包含管道中心线, 默认 false。可选。"),
+                   R("name")),
+
+                T("e3d_pml_eval", "求值一个 PML【表达式】并返回其值(内部 '!!x = <expr>' 真执行求值, 不改库)。用于取属性/算术, 例: expression='!!CE.ODIA' 返回外径, expression='2 * 3.14159 * 100' 返回算术结果。⚠ 这【不是】命令语法 dry-run——不能拿它'试运行' NEW/CONNECT/POS 等建模命令看语法对不对(它只跑表达式求值)。要验建模命令是否正确: 离线用 09 侧 PML lint(发送前静态校验), 真机看 e3d_pml_exec 的真实回执 + %TEMP%\\pipingclaw_e3d_pml.log。",
+                   P("expression:string:PML 表达式(不是命令)。必填。"), R("expression")),
 
                 // ══ 批量 ═══════════════════════════════════
                 T("e3d_batch_read", "批量读取多个元素的属性。elements 用逗号分隔路径列表。attrs 用逗号分隔属性名列表。返回格式: '--- NAME ---\\n  KEY: VALUE' 每组一段。用于同时查看多个管道的参数对比。",
@@ -119,14 +139,18 @@ namespace E3DMcpServer.Tools
                    R("name")),
 
                 // ══ 数据库 ═══════════════════════════════════
-                T("e3d_db_save", "保存所有修改到 E3D 数据库(SAVEWORK)。在执行任何修改操作(attr_set, create, delete 等)后, 必须调用此工具才能持久化。修改后立即保存是好习惯。返回: 'Database saved.'。", NoParams()),
+                T("e3d_db_save", "保存所有修改到 E3D 数据库(SAVEWORK)。在执行任何修改操作(attr_set, create, delete 等)后, 必须调用此工具才能持久化。危险操作（落库不可逆）：必须先向用户确认，再带 confirm='true' 调用。返回: 'Database saved.'。",
+                   P("confirm:string:危险操作确认，必须显式传 'true'（先向用户确认）。必填。"),
+                   R("confirm")),
 
                 T("e3d_db_changes", "查看自上次 SAVEWORK 以来所有变更的元素列表(GETCHANGES)。返回格式: 'GETCHANGES executed.' (输出到 E3D 控制台)。用于确认修改了哪些元素。", NoParams()),
 
                 T("e3d_db_undo", "撤销上一步操作(UNDO)。只能撤销未保存的修改。返回: 'Undo executed.'。", NoParams()),
 
-                T("e3d_db_extract", "从 E3D 数据库提取指定类型的所有元素到当前会话(EXTRACT ALL)。type 如 PIPE, ZONE, SITE 等。返回格式: 'Extracted all TYPE.'。",
-                   P("type:string:元素类型。必填。"), R("type")),
+                T("e3d_db_extract", "从 E3D 数据库提取指定类型的所有元素到当前会话(EXTRACT ALL)。type 如 PIPE, ZONE, SITE 等。危险操作（整库范围动作）：必须带 confirm='true'。返回格式: 'Extracted all TYPE.'。",
+                   P("type:string:元素类型。必填。"),
+                   P("confirm:string:危险操作确认，必须显式传 'true'。必填。"),
+                   R("type", "confirm")),
 
                 // ══ 元素生命周期 ═══════════════════════════
                 T("e3d_element_exists", "检查元素是否存在于数据库中。返回: 'TRUE: NAME exists.' 或 'FALSE: NAME does not exist.'。用于在操作前确认元素存在。",
@@ -218,6 +242,9 @@ namespace E3DMcpServer.Tools
                 T("e3d_spec_query", "查询 E3D 规格(SPEC)或目录(CAT)的详细信息。spec 为规格名称(如 1C003, 3S001), 留空查全部。返回: 'Queried spec SPECNAME.'。用于了解可用规格及其参数。",
                    P("spec:string:规格名称,如 '1C003' 或 '3S001'。可选, 留空查全部。")),
 
+                T("e3d_spec_list", "列出项目里所有可用的管道规格(SPEC)名——「选管等级」时用它枚举真实可选项(agent 不再瞎猜规格名)。返回: 'Spec list: N specs\\n  /规格名...'。枚举不到时诚实说明(规格可能在独立目录/spec库,需真机核实根)。",
+                   P("max:integer:最多返回多少个规格,默认500。可选。")),
+
                 T("e3d_bom", "查询元素的材料表(BOM - Bill of Materials)。返回: 'Bill of materials queried for NAME.'。用于导出材料清单。",
                    P("name:string:元素完整路径。必填。"), R("name")),
 
@@ -245,52 +272,59 @@ namespace E3DMcpServer.Tools
                    P("name:string:元素完整路径。必填。"), R("name")),
 
                 // ══ 管道操作 ═══════════════════════════════
-                T("e3d_pipe_cut", "在管道指定位置切割，将管道分成两段。at=切割位置(mm,距管道起点)。返回格式: 'OK: cut NAME at POSmm'。用于修改管道走向前先切断。",
+                // P2-C 存疑名单（2026-07-02）：CUT/GAP/JOIN/ROUTE 走裸命令形态（"CUT {name} AT {at}"），
+                // 未经 Choose 范式同等的真机验证，疑似伪 PML 残留 —— 命令可能被 E3D 拒绝。
+                // 已如实标注；真机日志闭环验证通过前，建模主链请优先用 Choose 系列插入工具。
+                T("e3d_pipe_cut", "⚠未经真机验证(裸命令形态,可能被 E3D 拒绝并返回带内错误)。意图: 在管道 at(mm) 处切割成两段。失败时请改用 New ... Choose 建模范式或由人在 E3D 内操作。返回: 'OK: cut ...' 或 'Error: ... 在 E3D 端被拒: <真实错误>'。",
                    P("name:string:管道完整路径。必填。"),
                    P("at:number:切割位置(mm)。必填。"),
                    R("name", "at")),
 
-                T("e3d_pipe_gap", "在管道指定位置切出间隙(GAP)，可指定间隙大小。用于为插入管件预留空间。gap 默认10mm。返回格式: 'OK: gap NAME at POSmm (gap=Nmm)'。",
+                T("e3d_pipe_gap", "⚠未经真机验证(裸命令形态,可能被 E3D 拒绝并返回带内错误)。意图: 在管道 at(mm) 处切出间隙,gap 默认10mm。返回: 'OK: gap ...' 或 'Error: ... 在 E3D 端被拒: <真实错误>'。",
                    P("name:string:管道完整路径。必填。"),
                    P("at:number:切割位置(mm)。必填。"),
                    P("gap:number:间隙距离(mm),默认10。可选。"),
                    R("name", "at")),
 
-                T("e3d_pipe_join", "合并两根共线管道为一条连续管道。返回格式: 'OK: joined NAME1 and NAME2'。与 CUT/GAP 相反的操作。",
+                T("e3d_pipe_join", "⚠未经真机验证(裸命令形态,可能被 E3D 拒绝并返回带内错误)。意图: 合并两根共线管道。返回: 'OK: joined ...' 或 'Error: ... 在 E3D 端被拒: <真实错误>'。",
                    P("name1:string:第一根管道路径。必填。"),
                    P("name2:string:第二根管道路径。必填。"),
                    R("name1", "name2")),
 
-                T("e3d_pipe_bend", "在管道指定位置插入弯头(ELBOW)，改变管道方向。可选 stype 指定弯头类型(如 90ELB/45ELB)。返回格式: 'OK: inserted bend on NAME at POSmm'。",
-                   P("name:string:管道完整路径。必填。"),
-                   P("at:number:插入位置(mm)。必填。"),
-                   P("stype:string:弯头类型(如 90ELB,45ELB)。可选,自动选择。"),
-                   R("name", "at")),
+                // P2①（2026-07-02 说真话）：五个管件插入工具的实现是【CE→目标 + New <TYPE> Choose 从管等级选型】
+                // 在分支当前位置建件 —— `at` 参数在实现里从未生效。旧描述"在 at(mm) 位置插入"会让 Agent 确信
+                // "阀门已在 3500mm 处"而模型里不是（无法自愈的认知污染）。现 at 降为可选并如实标注；精确定位
+                // 请建件后用 e3d_pos_dist / e3d_pos_thr / e3d_connect 微调。
+                T("e3d_pipe_bend", "在目标分支/元件后按管等级选型插入弯头(New ELBO Choose)，建在分支当前位置(CE 流转)，⚠不按 at 定位。可选 stype 指定选型。精确定位请随后用 e3d_pos_thr(THRO PH/PT/PREV)/e3d_connect 微调。返回格式: 'OK: New ELBO Choose ...（CE=目标）'。",
+                   P("name:string:目标分支/元件完整路径(CE 导航目标)。必填。"),
+                   P("at:number:【当前版本不生效】保留参数,插入位置不受它控制。可选。"),
+                   P("stype:string:弯头选型 Stype(如 90ELB,45ELB)。可选,缺省 Choose Default。"),
+                   R("name")),
 
-                T("e3d_pipe_tee", "在管道指定位置插入三通(TEE)，用于分支管道。可选 stype 指定三通类型。返回格式: 'OK: inserted tee on NAME at POSmm'。",
-                   P("name:string:管道完整路径。必填。"),
-                   P("at:number:插入位置(mm)。必填。"),
-                   P("stype:string:三通类型。可选。"),
-                   R("name", "at")),
+                T("e3d_pipe_tee", "在目标分支/元件后按管等级选型插入三通(New TEE Choose)，建在分支当前位置(CE 流转)，⚠不按 at 定位。精确定位请随后用 e3d_pos_thr(THRO PH/PT/PREV)/e3d_connect 微调。返回格式: 'OK: New TEE Choose ...（CE=目标）'。",
+                   P("name:string:目标分支/元件完整路径(CE 导航目标)。必填。"),
+                   P("at:number:【当前版本不生效】保留参数,插入位置不受它控制。可选。"),
+                   P("stype:string:三通选型 Stype。可选,缺省 Choose Default。"),
+                   R("name")),
 
-                T("e3d_pipe_valve", "在管道指定位置插入阀门(VALVE)。可选 stype 指定阀门类型(GATE/GLOB/BALL/CHECK等)。插入前需先用 CUT/GAP 准备位置。返回格式: 'OK: inserted valve on NAME at POSmm'。",
-                   P("name:string:管道完整路径。必填。"),
-                   P("at:number:插入位置(mm)。必填。"),
-                   P("stype:string:阀门类型。可选。"),
-                   R("name", "at")),
+                T("e3d_pipe_valve", "在目标分支/元件后按管等级选型插入阀门(New VALV Choose)，建在分支当前位置(CE 流转)，⚠不按 at 定位。精确定位请随后用 e3d_pos_thr(THRO PH/PT/PREV)/e3d_connect 微调。返回格式: 'OK: New VALV Choose ...（CE=目标）'。",
+                   P("name:string:目标分支/元件完整路径(CE 导航目标)。必填。"),
+                   P("at:number:【当前版本不生效】保留参数,插入位置不受它控制。可选。"),
+                   P("stype:string:阀门选型 Stype(GATE/GLOB/BALL/CHECK等)。可选,缺省 Choose Default。"),
+                   R("name")),
 
-                T("e3d_pipe_flange", "在管道指定位置插入法兰(FLANGE)。可选 stype 指定法兰类型(WNRF/SORF/BLIND等)。返回格式: 'OK: inserted flange on NAME at POSmm'。",
-                   P("name:string:管道完整路径。必填。"),
-                   P("at:number:插入位置(mm)。必填。"),
-                   P("stype:string:法兰类型。可选。"),
-                   R("name", "at")),
+                T("e3d_pipe_flange", "在目标分支/元件后按管等级选型插入法兰(New FLAN Choose)，建在分支当前位置(CE 流转)，⚠不按 at 定位。精确定位请随后用 e3d_pos_thr(THRO PH/PT/PREV)/e3d_connect 微调。返回格式: 'OK: New FLAN Choose ...（CE=目标）'。",
+                   P("name:string:目标分支/元件完整路径(CE 导航目标)。必填。"),
+                   P("at:number:【当前版本不生效】保留参数,插入位置不受它控制。可选。"),
+                   P("stype:string:法兰选型 Stype(WNRF/SORF/BLIND等)。可选,缺省 Choose Default。"),
+                   R("name")),
 
-                T("e3d_pipe_reducer", "在管道指定位置插入大小头(REDUCER)，实现管径变化。返回格式: 'OK: inserted reducer on NAME at POSmm'。",
-                   P("name:string:管道完整路径。必填。"),
-                   P("at:number:插入位置(mm)。必填。"),
-                   R("name", "at")),
+                T("e3d_pipe_reducer", "在目标分支/元件后按管等级选型插入大小头(New REDU Choose)，建在分支当前位置(CE 流转)，⚠不按 at 定位。精确定位请随后用 e3d_pos_thr(THRO PH/PT/PREV)/e3d_connect 微调。返回格式: 'OK: New REDU Choose ...（CE=目标）'。",
+                   P("name:string:目标分支/元件完整路径(CE 导航目标)。必填。"),
+                   P("at:number:【当前版本不生效】保留参数,插入位置不受它控制。可选。"),
+                   R("name")),
 
-                T("e3d_pipe_route", "对指定管道执行自动配管(ROUTE)，E3D 自动计算管道走向。返回格式: 'OK: auto-routed PIPE'。",
+                T("e3d_pipe_route", "⚠未经真机验证(裸命令 'ROUTE {pipe}' 形态,可能被 E3D 拒绝并返回带内错误)。意图: 让 E3D 自动计算管道走向。智能布管请优先用应用侧 routePlan(Genesis)。返回: 'OK: auto-routed ...' 或 'Error: ... 在 E3D 端被拒: <真实错误>'。",
                    P("pipe:string:管道完整路径。必填。"),
                    R("pipe")),
 
@@ -362,7 +396,7 @@ namespace E3DMcpServer.Tools
                    P("z:number:标高(mm)。必填。"),
                    R("name", "x", "y", "z")),
 
-                T("e3d_pos_dist", "设置元素距离参考点的距离(DIST)。from 为参考元素路径。返回格式: 'OK: set NAME distance DISTmm'。",
+                T("e3d_pos_dist", "⚠未经真机验证(PML命令语法核查报告 §6)：`{name} DIST {值}` 作为定位命令无任何官方/社区出处，高度疑与量距查询 DIST 混淆，可能被 E3D 拒收。精确定位优先改用 e3d_pos_thr(THRO PH/PT/PREV 穿分支头/尾/上一件点)或 e3d_connect(CONN 族)。失败时带回 E3D 真实错误。",
                    P("name:string:元素完整路径。必填。"),
                    P("dist:number:距离(mm)。必填。"),
                    P("from:string:参考元素路径。可选,默认当前参考点。"),
@@ -388,10 +422,11 @@ namespace E3DMcpServer.Tools
                    P("name:string:元素完整路径。必填。"),
                    R("name")),
 
-                T("e3d_force_connect", "强制连接两个元素(FCONN)，忽略对齐约束。返回格式: 'OK: force-connected NAME to TARGET'。用于特殊情况下的非标准连接。",
+                T("e3d_force_connect", "强制连接两个元素(FCONN)，忽略对齐约束。危险操作（可产生几何错位的非标准连接）：必须带 confirm='true'。返回格式: 'OK: force-connected NAME to TARGET'。仅特殊情况使用。",
                    P("name:string:源元素路径。必填。"),
                    P("target:string:目标元素路径。必填。"),
-                   R("name", "target")),
+                   P("confirm:string:危险操作确认，必须显式传 'true'（先向用户确认）。必填。"),
+                   R("name", "target", "confirm")),
 
                 // ══ 会话 ═══════════════════════════════════
                 T("e3d_session_status", "获取当前 E3D 会话状态。返回: 'Session status queried.\\n  project: ...\\n  mdb: ...\\n  user: ...\\n  module: ...'。用于确认 E3D 连接正常和工作环境。", NoParams()),
