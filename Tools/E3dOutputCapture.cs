@@ -199,6 +199,21 @@ namespace E3DMcpServer.Tools
                     var v = p.GetValue(o, null);
                     if (v != null) return v.ToString();
                 }
+                // ★PdmsOutput 一族没有 MessageText —— 文本在 Description / Details
+                //  （官方 XML：Description "Message description" · Details "Message details"）。
+                //   第八跑实证：监听器收到的正是 PdmsOutputImpl，上一轮只按 PdmsMessage 修，
+                //   所以还是回"只拿到类型名"。两个类不一样，取法也不一样。
+                string desc = null, det = null;
+                var pd = t.GetProperty("Description");
+                if (pd != null) { var v = pd.GetValue(o, null); if (v != null) desc = v.ToString(); }
+                var pt = t.GetProperty("Details");
+                if (pt != null) { var v = pt.GetValue(o, null); if (v != null) det = v.ToString(); }
+                if (!string.IsNullOrWhiteSpace(desc) || !string.IsNullOrWhiteSpace(det))
+                {
+                    if (string.IsNullOrWhiteSpace(det)) return desc;
+                    if (string.IsNullOrWhiteSpace(desc)) return det;
+                    return desc + " | " + det;
+                }
             }
             catch { /* 取文本失败就退回 ToString，不抛 */ }
             var fallback = o.ToString();

@@ -865,7 +865,14 @@ namespace E3DMcpServer.Tools
                     bool ok2; string val2; string err2;
                     EvalViaPmlGlobal(expression, true, out ok2, out val2, out err2);
                     if (ok2 && !string.IsNullOrEmpty(val2)) return val2;
-                    if (!ok && !ok2) return $"Error: 表达式求值失败: {err ?? err2}";
+                    // ★2026-07-29 第八跑修：原来是 `{err ?? err2}` —— err 非空时
+                    //   **第二形态的错误被吞掉**，而我们真正想知道的恰恰是 VAR 形态为什么不行
+                    //  （第一形态 `!!x = COLLECT …` 报语法错是意料之中的，没有信息量）。
+                    //   两个都报出来，别让"兜底那条"的失败原因消失。
+                    if (!ok && !ok2)
+                        return "Error: 表达式求值失败\n"
+                             + "  ① 直赋形态 `!!x = <expr>`: " + (err ?? "(无错误文本)") + "\n"
+                             + "  ② VAR 形态 `VAR !!x <expr>`: " + (err2 ?? "(无错误文本)");
                 }
                 return string.IsNullOrEmpty(val) ? "(no return value)" : val;
             }
@@ -1976,10 +1983,31 @@ namespace E3DMcpServer.Tools
             try
             {
                 var t = o.GetType();
+                // ── PdmsMessage 一族：MessageText() ──
                 var m = t.GetMethod("MessageText", Type.EmptyTypes);
                 if (m != null) { var v = m.Invoke(o, null); if (v != null) return v.ToString(); }
                 var p = t.GetProperty("MessageText");
                 if (p != null) { var v = p.GetValue(o, null); if (v != null) return v.ToString(); }
+
+                // ── ★PdmsOutput 一族：没有 MessageText，文本在 Description / Details ──
+                //   2026-07-29 真机第八跑：上一轮只按 PdmsMessage 修，结果输出捕获
+                //   仍回 "(取不到消息文本，只拿到类型名 …PdmsOutputImpl)"。
+                //   官方 XML 文档（Aveva.Core.Utilities.xml）里 PdmsOutput 的成员是：
+                //     Type "Message type" · Description "Message description"
+                //     · Details "Message details" · Category · Date
+                //   ★两个类不一样，取法也不一样 —— 这就是为什么要按"有没有这个成员"降级，
+                //     而不是认死一种类型。
+                string desc = null, det = null;
+                var pd = t.GetProperty("Description");
+                if (pd != null) { var v = pd.GetValue(o, null); if (v != null) desc = v.ToString(); }
+                var pt = t.GetProperty("Details");
+                if (pt != null) { var v = pt.GetValue(o, null); if (v != null) det = v.ToString(); }
+                if (!string.IsNullOrWhiteSpace(desc) || !string.IsNullOrWhiteSpace(det))
+                {
+                    if (string.IsNullOrWhiteSpace(det)) return desc;
+                    if (string.IsNullOrWhiteSpace(desc)) return det;
+                    return desc + "\n" + det;
+                }
             }
             catch { }
             var fb = o.ToString();
@@ -2017,7 +2045,17 @@ namespace E3DMcpServer.Tools
             string vn = "!!MCPQ" + rnd;
             try
             {
-                string assign = varForm ? $"VAR {vn} = {expression}" : $"{vn} = {expression}";
+                // ★2026-07-29 真机第八跑修：这行原来是
+                //     varForm ? $"VAR {vn} = {expression}" : $"{vn} = {expression}"
+                //   **两条都带 `=`** —— 而 EvaluatePml 的注释写着"失败再试 VAR 赋值式
+                //  （Q 系命令形态）"。也就是说所谓的"双形态兜底"其实是**同一种形态试两遍**，
+                //   注释承诺的那条路**从来没被发送过**（又一例「宣称生效实际不通」）。
+                //   证据：真机上 `COLLECT ALL SPEC` 与对照组 `COLLECT ALL EQUI`（绝对有效的类型）
+                //   双双回 `CP: Syntax error` —— 错的不是类型名，是语法本身。
+                //   官方 COLLECT 形态（DBRM 第 11 章，手册标注可作 ground truth）是
+                //     VAR !Array COLLECT ALL <TYPE>        ← **没有等号**
+                //   同文件的 ReadPmlViaGlobal 反而一直是对的（`VAR {vn} {assignTail}`）。
+                string assign = varForm ? $"VAR {vn} {expression}" : $"{vn} = {expression}";
                 LogPml(assign, null);
                 Aveva.Core.Utilities.CommandLine.Command.RunPMLCommandInPDMS(assign);
                 Aveva.Core.Utilities.Messaging.PdmsMessage perr;
