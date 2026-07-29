@@ -1,4 +1,4 @@
-using System;
+﻿using System;
 using System.Collections.Generic;
 using System.Linq;
 using System.Text;
@@ -66,7 +66,7 @@ namespace E3DMcpServer.Tools
 
                     // ── PML ──
                     case "e3d_pml_exec":           return HandlePmlExec(args);
-                    // ★2026-07-29 新增（未编译验证，见各自实现的头注）
+                    // ★2026-07-29 新增（✅ 已编译通过 · ⚠ **真机未跑过**，见各自实现的头注）
                     case "e3d_pml_exec_verbose":   return HandlePmlExecVerbose(args);
                     case "e3d_csg_dump":           return HandleCsgDump(args);
                     case "e3d_pml_eval":           return HandlePmlEval(args);
@@ -405,7 +405,7 @@ namespace E3DMcpServer.Tools
             return Ok(_api.ExecutePml(cmd));
         }
 
-        /// <summary>执行 PML 并把 E3D 打印的输出一起带回（见 E3dOutputCapture 头注）。⚠ 未编译验证。</summary>
+        /// <summary>执行 PML 并把 E3D 打印的输出一起带回（见 E3dOutputCapture 头注）。✅ 已编译 · ⚠ 真机未跑过。</summary>
         ToolCallResult HandlePmlExecVerbose(JObject a)
         {
             var cmd = a?["command"]?.Value<string>();
@@ -415,7 +415,7 @@ namespace E3DMcpServer.Tools
             return Ok(_api.RunPmlVerbose(cmd));
         }
 
-        /// <summary>读元素的真实几何图元（尺寸 + 变换矩阵）。⚠ 未编译验证，见 E3dCsgDump 头注。</summary>
+        /// <summary>读元素的真实几何图元（尺寸 + 变换矩阵）。✅ 已编译 · ⚠ 真机未跑过，见 E3dCsgDump 头注。</summary>
         ToolCallResult HandleCsgDump(JObject a)
         {
             var name = a?["name"]?.Value<string>();

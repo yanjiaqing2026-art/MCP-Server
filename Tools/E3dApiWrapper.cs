@@ -1,4 +1,4 @@
-using System;
+﻿using System;
 using System.Collections.Generic;
 using System.Linq;
 using System.Text;
@@ -1390,7 +1390,8 @@ namespace E3DMcpServer.Tools
                 //     MDB.GetDBArray(DbType)          "List of DBs in MDB of given type."
                 //     Db.World                        "Root 'world' Element for this Database"
                 //   09 侧前六跑 e3d_spec_list / e3d_search 全 0 结果，根因就是**只扫了设计世界**。
-                //   ⚠ 未编译验证：本机没有 AVEVA 编译环境。整段包在 try 里 ——
+                //   ✅ 已编译通过（本机 dotnet build net472，2026-07-29）；**真机仍未跑过**。
+                //   整段包在 try 里 ——
                 //     API 名字若有出入，退回「只扫设计世界」的旧行为，**绝不因为新根挂了就整个功能崩**。
                 var roots = new List<DbElement>();
                 try
@@ -1465,7 +1466,7 @@ namespace E3DMcpServer.Tools
         ///   · 捕获成败 → 回执里单独一行说明
         /// 拿"我没听见"当"它没说"，是本仓头号红线的另一张脸。
         ///
-        /// ⚠ 未编译验证（本机无 AVEVA 编译环境）——见 E3dOutputCapture 头注的确认步骤。
+        /// ✅ 已编译通过（2026-07-29 本机 dotnet build）；⚠ **真机未跑过** —— 见 E3dOutputCapture 头注的确认步骤。
         /// </summary>
         public string RunPmlVerbose(string cmd)
         {

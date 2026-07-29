@@ -1,4 +1,4 @@
-using System;
+﻿using System;
 using System.Collections.Generic;
 using System.Text;
 
@@ -23,7 +23,7 @@ namespace E3DMcpServer.Tools
     ///     · <c>AddOutputListener(listener)</c>  "Add message listener"
     ///     · <c>RemoveOutputListener(listener)</c>
     ///
-    /// ═══ ⚠ 未编译验证（读这段代码的人务必先看这里）═══════════════════════════
+    /// ═══ ✅ 已编译通过 · ⚠ 真机未跑过（读这段代码的人务必先看这里）═══════════
     /// 本文件是**在没有 AVEVA 编译环境的机器上**写的。已确认的是「API 存在 + 文档怎么说」；
     /// **没确认**的是委托的**参数类型**（XML 文档只写了 "a message and message type"，
     /// 没给签名）。所以：

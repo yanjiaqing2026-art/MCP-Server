@@ -1,4 +1,4 @@
-using System.Collections.Generic;
+﻿using System.Collections.Generic;
 using E3DMcpServer.Models;
 
 namespace E3DMcpServer.Tools
@@ -93,7 +93,7 @@ namespace E3DMcpServer.Tools
                 T("e3d_pml_exec", "在 E3D 中执行任意 PML 命令(真写库)。🚨 完全数据库访问权限, 请谨慎! 支持所有 PML 语法: NEW/DELETE/MOVE/BY/POS/SAVEWORK/UNDO 等。PML 语法: 元素操作如 'NEW PIPE /NAME', 属性设置如 '!!CE.ODIA = 219.1', 查询如 'Q VAR !!CE.ODIA'。返回 'Command executed.' 或错误信息。⚠ 建模/定位/连接类动词(ROTATE/CONNECT/POS…)作用于 CE(当前元素)、不接前导元素名——先 '!!CE = /目标' 导航再发裸命令。⚠ e3d_pml_eval 只求值表达式、【不能】对建模命令做语法 dry-run。",
                    P("command:string:完整 PML 命令字符串。必填。"), R("command")),
 
-                // ★2026-07-29 新增两个（⚠ 未编译验证，见各自 .cs 头注的确认步骤）
+                // ★2026-07-29 新增两个（✅ 已编译通过 · ⚠ **真机未跑过**，见各自 .cs 头注的确认步骤）
                 T("e3d_pml_exec_verbose", "执行 PML 命令并**把 E3D 打印到命令窗口的输出一起带回来**。与 e3d_pml_exec 的区别: 后者只回'成/败 + 失败时的报错', 成功时零内容, 而 Q SPEC / $Q / LIST 这类【打印型】命令的结果全进命令窗口拿不到。用它可以真正读到: $Q 语法提示(官方的下一个合法命令词, 手册说'真机 $Q 为准')、Q SPEC 的规格清单、Q ATT 的属性表。回执分两段: 命令成败 + E3D 输出; ★捕获失败会单独说明 —— 那只说明【我们没听见】, 不说明命令没输出、更不说明命令失败。",
                    P("command:string:完整 PML 命令字符串。必填。"), R("command")),
 

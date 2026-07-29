@@ -1,4 +1,4 @@
-using System;
+﻿using System;
 using System.Collections.Generic;
 using System.Globalization;
 using System.Text;
@@ -26,7 +26,7 @@ namespace E3DMcpServer.Tools
     ///       —— <b>transformation 就是「局部原点在哪」的答案</b>
     ///   <c>CSGTreeBuilderOptions</c>: CenterLine · Tube · Insulation · Obstruction · Holes · SolidOnly · Pline
     ///
-    /// ═══ ⚠ 未编译验证 ═══════════════════════════════════════════════════════
+    /// ═══ ✅ 已编译通过 · ⚠ 真机未跑过 ═══════════════════════════════════════
     /// 本文件在**没有 AVEVA 编译环境**的机器上写成。方法签名逐字取自官方 XML 文档，
     /// 但**没编译过、没跑过**。第一次编译若报错，多半是：
     ///   · <c>CSGTreeBuilder.Instance</c> 的取法（文档只写 "Instance of Abstract class"）
@@ -85,7 +85,7 @@ namespace E3DMcpServer.Tools
             catch (Exception ex)
             {
                 return "Error: ReadGeometry 失败: " + ex.GetBaseException().Message
-                     + "\n（这条路是按官方 XML 文档签名写的但未编译验证 —— 把这行原文贴回来即可定位）";
+                     + "\n（这条路按官方 XML 文档签名写、已编译通过，但**真机未跑过** —— 把这行原文贴回来即可定位）";
             }
 
             // ── ★第二段：未变换包围盒（visitor 给不出，只能走 CSGTree.Items）──────
