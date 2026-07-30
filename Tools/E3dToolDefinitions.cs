@@ -97,6 +97,15 @@ namespace E3DMcpServer.Tools
                 T("e3d_pml_exec_verbose", "执行 PML 命令并**把 E3D 打印到命令窗口的输出一起带回来**。与 e3d_pml_exec 的区别: 后者只回'成/败 + 失败时的报错', 成功时零内容, 而 Q SPEC / $Q / LIST 这类【打印型】命令的结果全进命令窗口拿不到。用它可以真正读到: $Q 语法提示(官方的下一个合法命令词, 手册说'真机 $Q 为准')、Q SPEC 的规格清单、Q ATT 的属性表。回执分两段: 命令成败 + E3D 输出; ★捕获失败会单独说明 —— 那只说明【我们没听见】, 不说明命令没输出、更不说明命令失败。",
                    P("command:string:完整 PML 命令字符串。必填。"), R("command")),
 
+                // ★2026-07-30 —— 等级驱动选型，走 AVEVA 原生 Aveva.E3D.Select（不是发 SELECT 命令）。
+                T("e3d_spec_select", "★**等级驱动选型**（配管 + 暖通）。走 AVEVA 原生 Aveva.E3D.Select: Select.InSpecification/With/WithPurpose → ComponentSelection.AvailableComponents/Create/**GetMessages**。取代'发一条 SELECT 再读 SPREF 看空不空'那种试错 —— **AvailableComponents 直接回答'这个等级里到底有没有这类件', GetMessages 直接回答'为什么选不到'**。mode: **probe**(★第一次必跑, 验 PMLNetAny 拿不拿得到 —— 那是整条链的门槛) / available(列可选构件) / hvac(暖通有哪些类型与尺寸)。★结构型钢**不走这条**(它是问答式 StructuralSpec, 另一个程序集) —— SCTN 发 SELECT 回 (61,28) 就是走错范式。",
+                   P("mode:string:probe / available / hvac。默认 probe。可选。"),
+                   P("spec:string:等级名(★现查现用, 不要写死)。available 必填。"),
+                   P("type:string:构件类型码, 如 'ELBO' / 'GASK'。可选(空=列全部)。"),
+                   P("attr:string:过滤属性名, 如 'NPD'。可选。"),
+                   P("value:string:过滤属性值, 如 '150'。可选。"),
+                   P("purpose:string:用途码。可选。")),
+
                 // ★2026-07-30 —— 用户点破「答案其实都在 dll 和 xml 里」之后加的。
                 // DbElementType 上每一条都是我们试了三四跑的问题的现成答案。
                 T("e3d_type_schema", "★**查元素类型的完整 schema**: 合法 owner 类型 / 可包含的成员类型 / 真实属性名单 / 可连接数 / 短名与全名 / 所在数据库类型。走 AVEVA 原生 DbElementType(OwnerTypes/MemberTypes/SystemAttributes/ValidConnections/ShortName)。**不带 type 参数 = 列出全部类型**(含短名, 直接解掉 SPEC vs SPECIFICATION 那类别名坑)。用于: 建元素前确认该建在什么下面(不用真机试错)、判某类型有没有某属性(不用发一条看回不回 (2,201))、判某类型能不能 CONNECT。★这份是**权威的禁止面** —— ATT 统计只能证明'允许', 证明不了'禁止'。",

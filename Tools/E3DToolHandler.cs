@@ -126,6 +126,7 @@ namespace E3DMcpServer.Tools
                     case "e3d_spec_list":          return HandleSpecList(args);
                     case "e3d_collect_query":      return HandleCollectQuery(args);
                     case "e3d_type_schema":        return HandleTypeSchema(args);
+                    case "e3d_spec_select":       return HandleSpecSelect(args);
                     case "e3d_bom":                return HandleBom(args);
                     case "e3d_component_info":     return HandleComponentInfo(args);
 
@@ -449,6 +450,20 @@ namespace E3DMcpServer.Tools
             var type = a?["type"]?.Value<string>();
             int max = a?["max"]?.Value<int>() ?? 400;
             return Ok(E3dTypeSchema.Run(type, max));
+        }
+
+        /// <summary>
+        /// ★等级驱动选型 —— 见 E3dSpecSelect.cs 头注（为什么不发 SELECT 命令）。
+        /// </summary>
+        ToolCallResult HandleSpecSelect(JObject a)
+        {
+            return Ok(E3dSpecSelect.Run(
+                a?["mode"]?.Value<string>(),
+                a?["spec"]?.Value<string>(),
+                a?["type"]?.Value<string>(),
+                a?["attr"]?.Value<string>(),
+                a?["value"]?.Value<string>(),
+                a?["purpose"]?.Value<string>()));
         }
 
         ToolCallResult HandlePmlEval(JObject a)

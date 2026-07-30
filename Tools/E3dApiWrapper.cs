@@ -1954,6 +1954,13 @@ namespace E3DMcpServer.Tools
 
         // P0-C（指导书 2026-07-02）：带内错误版本 —— Agent 读不到 D:\ 日志也看不到命令窗，
         // 纠错依据必须在返回值里。error 取 Command.Error（E3D 的真实报错文本）。
+        /// <summary>
+        /// ★给同程序集别的工具用的公开入口（<see cref="E3dSpecSelect"/> 要发一条 PML
+        /// 把等级挂到全局变量上）。**只是转调，不复制一份逻辑** ——
+        /// 复制一份就会漂移，而 <c>TryRunPml</c> 里有黑名单与错误文本提取。
+        /// </summary>
+        internal static bool TryRunPmlPublic(string cmd, out string error) { return TryRunPml(cmd, out error); }
+
         private static bool TryRunPml(string cmd, out string error)
         {
             var c = Aveva.Core.Utilities.CommandLine.Command.CreateCommand(cmd);
