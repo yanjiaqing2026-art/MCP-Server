@@ -26,6 +26,7 @@
     <Compile Include="Tools\E3dCollectQuery.cs" />
     <Compile Include="Tools\E3dTypeSchema.cs" />
     <Compile Include="Tools\E3dSpecSelect.cs" />
+    <Compile Include="Tools\E3dNativeOps.cs" />
     <Reference Include="System.Windows.Forms" />
     <Reference Include="Aveva.ApplicationFramework">
       <HintPath>C:\项目\17-E3D插件\lib\Aveva.ApplicationFramework.dll</HintPath>

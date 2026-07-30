@@ -106,6 +106,15 @@ namespace E3DMcpServer.Tools
                    P("value:string:过滤属性值, 如 '150'。可选。"),
                    P("purpose:string:用途码。可选。")),
 
+                // ★2026-07-31 原生 API 批（全量索引挖完后按「签名清楚+对着已知痛点」筛的五个）。
+                T("e3d_native_ops", "★**AVEVA 原生 API 杂项**（一个工具五个动作，全部离线可答、不发 PML）: `bore`=官方通径换算(我们一直自己算, 栽过'小1000倍') · `members`=成员遍历(解掉 !!ce.MEM 拿不回数组那个缺口, 可按类型过滤) · `copytree`=**整棵子树复制**(typical 复用: 把建好的一台泵/一榀框架复用到另一处) · `attrvalid`=**这个类型有没有这个属性**(此前要发一条看回不回 (2,201)) · `namecheck`=名字格式预检(此前要真机回 (41,12) 才知道)。★copytree 是**写操作且不可逆**。",
+                   P("action:string:bore | members | copytree | attrvalid | namecheck。必填。"),
+                   P("name:string:元素路径(members/copytree源) 或 类型码(attrvalid) 或 类型码(namecheck, 可选)。"),
+                   P("arg1:string:members=类型过滤(可选) · copytree=复制到谁后面 · attrvalid=属性名 · bore=通径值 · namecheck=候选名字。"),
+                   P("arg2:string:bore 的第二个参数(Int32, 官方没说明含义, 原样透传)。可选。"),
+                   P("max:integer:members 最多列多少个, 默认200。可选。"),
+                   R("action")),
+
                 // ★2026-07-30 —— 用户点破「答案其实都在 dll 和 xml 里」之后加的。
                 // DbElementType 上每一条都是我们试了三四跑的问题的现成答案。
                 T("e3d_type_schema", "★**查元素类型的完整 schema**: 合法 owner 类型 / 可包含的成员类型 / 真实属性名单 / 可连接数 / 短名与全名 / 所在数据库类型。走 AVEVA 原生 DbElementType(OwnerTypes/MemberTypes/SystemAttributes/ValidConnections/ShortName)。**不带 type 参数 = 列出全部类型**(含短名, 直接解掉 SPEC vs SPECIFICATION 那类别名坑)。用于: 建元素前确认该建在什么下面(不用真机试错)、判某类型有没有某属性(不用发一条看回不回 (2,201))、判某类型能不能 CONNECT。★这份是**权威的禁止面** —— ATT 统计只能证明'允许', 证明不了'禁止'。",
