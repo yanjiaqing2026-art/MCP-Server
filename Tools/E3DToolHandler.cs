@@ -130,6 +130,7 @@ namespace E3DMcpServer.Tools
                     case "e3d_datal_dump":         return HandleDatalDump(args);
                     case "e3d_analysis":           return HandleAnalysis(args);
                     case "e3d_fab_check":          return HandleFabCheck(args);
+                    case "e3d_precheck":           return HandlePrecheck(args);
                     case "e3d_status_read":        return HandleStatus(args, false);
                     case "e3d_status_write":       return HandleStatus(args, true);
                     case "e3d_spec_select":       return HandleSpecSelect(args);
@@ -460,6 +461,15 @@ namespace E3DMcpServer.Tools
             if (string.IsNullOrWhiteSpace(names)) return Err("请提供 names。");
             return Ok(E3dAnalysis.Run(action, names, a?["arg1"]?.Value<string>(),
                                       a?["arg2"]?.Value<string>(), a?["max"]?.Value<int>() ?? 100));
+        }
+
+        /// <summary>★改之前先问 —— 见 E3dPrecheck.cs 头注（可改性 / 真属性清单 / 值合法性）。</summary>
+        ToolCallResult HandlePrecheck(JObject a)
+        {
+            var names = a?["names"]?.Value<string>();
+            if (string.IsNullOrWhiteSpace(names)) return Err("请提供 names（元素路径，逗号分隔）。");
+            return Ok(E3dPrecheck.Run(names, a?["attr"]?.Value<string>(),
+                                      a?["value"]?.Value<string>(), a?["max"]?.Value<int>() ?? 60));
         }
 
         /// <summary>★管道可制造性检查 —— 见 E3dFabCheck.cs 头注（含"为什么按写对待"）。</summary>
