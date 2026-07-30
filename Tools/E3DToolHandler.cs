@@ -124,6 +124,7 @@ namespace E3DMcpServer.Tools
                     // ── 规格/目录 ──
                     case "e3d_spec_query":         return HandleSpecQuery(args);
                     case "e3d_spec_list":          return HandleSpecList(args);
+                    case "e3d_collect_query":      return HandleCollectQuery(args);
                     case "e3d_bom":                return HandleBom(args);
                     case "e3d_component_info":     return HandleComponentInfo(args);
 
@@ -425,6 +426,18 @@ namespace E3DMcpServer.Tools
             bool obs = a?["obstruction"]?.Value<bool>() ?? false;
             bool cl = a?["centerline"]?.Value<bool>() ?? false;
             return Ok(E3dCsgDump.Dump(name, max, ins, obs, cl));
+        }
+
+        /// <summary>
+        /// ★COLLECT 批量查 —— 见 E3dCollectQuery.cs 头注（为什么不用 PML 文本 / 不用宏）。
+        /// </summary>
+        ToolCallResult HandleCollectQuery(JObject a)
+        {
+            var criteria = a?["criteria"]?.Value<string>();
+            if (string.IsNullOrWhiteSpace(criteria)) return Err("请提供 criteria（PML1 选择准则，如 'ALL SPEC'）。");
+            int max = a?["max"]?.Value<int>() ?? 200;
+            var attrs = a?["attrs"]?.Value<string>();
+            return Ok(E3dCollectQuery.Run(criteria, max, attrs));
         }
 
         ToolCallResult HandlePmlEval(JObject a)

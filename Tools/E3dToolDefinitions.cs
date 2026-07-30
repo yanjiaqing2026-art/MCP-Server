@@ -97,6 +97,15 @@ namespace E3DMcpServer.Tools
                 T("e3d_pml_exec_verbose", "执行 PML 命令并**把 E3D 打印到命令窗口的输出一起带回来**。与 e3d_pml_exec 的区别: 后者只回'成/败 + 失败时的报错', 成功时零内容, 而 Q SPEC / $Q / LIST 这类【打印型】命令的结果全进命令窗口拿不到。用它可以真正读到: $Q 语法提示(官方的下一个合法命令词, 手册说'真机 $Q 为准')、Q SPEC 的规格清单、Q ATT 的属性表。回执分两段: 命令成败 + E3D 输出; ★捕获失败会单独说明 —— 那只说明【我们没听见】, 不说明命令没输出、更不说明命令失败。",
                    P("command:string:完整 PML 命令字符串。必填。"), R("command")),
 
+                // ★2026-07-30 第十三跑之后新增 —— 让 agent 能**按条件批量查 E3D**。
+                // 依据: AVEVA 自带 XML 文档 DbCollection.Parse/Evaluate（逐字，不是猜的）。
+                // 走过的两条弯路见 E3dCollectQuery.cs 头注（多行 PML 的块结构 · 临时宏）。
+                T("e3d_collect_query", "★**按条件批量查元素**（COLLECT）。传 PML1 **选择准则**, 用 AVEVA 原生 DbCollection.Parse+Evaluate —— 不跑 PML 文本、不写临时文件、错误从 PdmsMessage 出真文本。用于: 列全部管等级/设备/某类型元素、按条件筛(WHERE)、限定作用域(FOR)。★criteria 只传准则本身, **不要**带 'VAR !x COLLECT' 前缀(官方例子: 'ALL BOX WHERE (XLEN + 10) FOR /MYSITE')。返回: 'collect: N elements (criteria: X)\n  名字|属性=值'。★超过 max 会**明说另有多少个未列出**, 不悄悄截断。",
+                   P("criteria:string:PML1 选择准则, 如 'ALL SPEC' / 'ALL EQUI FOR /SITE-A' / 'ALL BOX WHERE (XLEN GT 1000)'。必填。"),
+                   P("max:integer:最多返回多少个, 默认200。可选。"),
+                   P("attrs:string:每个元素额外读回的属性名, 逗号分隔, 如 'PSPEC,HBORE'。可选。"),
+                   R("criteria")),
+
                 T("e3d_csg_dump", "读一个元素的**真实几何图元**: 类型(BOX/CYLINDER/DISH/SNOUT/CTORUS…)、真实尺寸、以及**变换矩阵**。区别于 e3d_collect_geometry(只回 @ (X,Y,Z) 位置 + 几个字符串属性, 没有包围盒/变换/真尺寸)。用于: 判断图元的局部原点在哪(如 DISH 封头原点在底面还是拱顶)、取保温包络与障碍体的真实尺寸、写后验收比几何而不只比属性。返回格式: 'csg: N primitives (root: X)\\n  [DISH] 名|CSGTYPE=..|RADIUS=..|HEIGHT=..|TRANSFORM=[n]{..}'。★变换矩阵原样回传不做解释(行/列主序未经证实, 猜一个说法比不说更坏)。",
                    P("name:string:元素路径。必填。"),
                    P("max:integer:最多返回多少个图元, 默认200。可选。"),
