@@ -45,10 +45,12 @@ namespace E3DMcpServer.Tools
                 case "inbox":   return InBox(names, arg1, arg2, max);
                 case "rule":    return Rule(names, arg1, max);
                 case "assoc":   return Assoc(names, max);
+                case "topo":    return Topo(names, max);
                 default:
                     return "analysis: 不认识的 action「" + action + "」。可选："
                          + "clash(原生碰撞) · inbox(空间盒内有哪些元素) · "
-                         + "rule(表达式规则判定) · assoc(P&ID↔3D 关联)";
+                         + "rule(表达式规则判定) · assoc(P&ID↔3D 关联) · "
+                         + "topo(管线归属/流向/首末段 —— 别再拿路径字符串算)";
             }
         }
 
@@ -199,6 +201,95 @@ namespace E3DMcpServer.Tools
                 return sb.ToString();
             }
             catch (Exception ex) { return "rule: 抛异常：" + Inner(ex); }
+        }
+
+        // ── ⑤ 管线拓扑：归属 / 流向 / 首末段（2026-07-31 钻 Integrator + MMServices）─
+        /// <summary>
+        /// 四条**全是静态方法**，反射即可调，全部只读：
+        ///   <c>CMUtility.GetOwnerLinePipe(el)</c> / <c>GetOwnerBranch(el)</c>
+        ///     —— 从任一构件往上找它属于哪根管 / 哪条分支。
+        ///     ★我们今天是**切路径字符串**算的，而 E3D 名字是**平名**、
+        ///       路径不保证反映真实归属 —— 这条把它变成问出来的。
+        ///   <c>CMUtility.IsReverseFlowDirection(el)</c> —— **流向反没反**。
+        ///     我们对流向此前一个答案都没有，而它决定 arrive/leave 谁是谁。
+        ///   <c>CMUtility.IsElementLinkedToAnything(el)</c> —— 这个构件挂没挂 P&ID 关联
+        ///     （比 assoc 更轻，用来先筛）。
+        ///   <c>MMServices.Utilities.GetFirstSegment/GetLastSegment(el)</c> —— 首段 / 末段。
+        /// ★每条**各自报各自的成败** —— 一条不可用不拖累其余三条
+        ///   （两个程序集是分开的，很可能只装了一个）。
+        /// </summary>
+        private static string Topo(string names, int max)
+        {
+            if (string.IsNullOrWhiteSpace(names)) return "topo: 缺 names（元素路径，逗号分隔）。";
+            var cm = Type.GetType("Aveva.Pdms.Integrator.CMUtility, Integrator");
+            var ut = Type.GetType("Aveva.Pdms.MMServices.Utilities, MMServices");
+
+            var sb = new StringBuilder();
+            if (cm == null) sb.Append("⚠ 没装 Integrator —— 归属/流向/关联三项**查不了**（不是'没有'）。\n");
+            if (ut == null) sb.Append("⚠ 没装 MMServices —— 首末段**查不了**（不是'没有'）。\n");
+            if (cm == null && ut == null) return sb + "topo: 两个程序集都不在，本动作无从谈起。";
+
+            int n = 0;
+            foreach (var raw in names.Split(','))
+            {
+                var p = (raw ?? "").Trim();
+                if (p.Length == 0) continue;
+                if (++n > max) { sb.Append("★只处理前 ").Append(max).Append(" 个（不是没有）\n"); break; }
+
+                DbElement el;
+                try
+                {
+                    el = DbElement.GetElement(p);
+                    if (!el.IsValid) { sb.Append("── ").Append(p).Append("\n   ✗ 不是有效元素。\n"); continue; }
+                }
+                catch (Exception ex) { sb.Append("── ").Append(p).Append("\n   ✗ 解析抛异常：").Append(Inner(ex)).Append("\n"); continue; }
+
+                sb.Append("── ").Append(p).Append("\n");
+                if (cm != null)
+                {
+                    sb.Append("   所属管线 PIPE：").Append(CallEl(cm, "GetOwnerLinePipe", el)).Append("\n");
+                    sb.Append("   所属分支 BRAN：").Append(CallEl(cm, "GetOwnerBranch", el)).Append("\n");
+                    sb.Append("   流向是否反：").Append(CallBool(cm, "IsReverseFlowDirection", el)).Append("\n");
+                    sb.Append("   挂了 P&ID 关联：").Append(CallBool(cm, "IsElementLinkedToAnything", el)).Append("\n");
+                }
+                if (ut != null)
+                {
+                    sb.Append("   首段：").Append(CallEl(ut, "GetFirstSegment", el)).Append("\n");
+                    sb.Append("   末段：").Append(CallEl(ut, "GetLastSegment", el)).Append("\n");
+                }
+            }
+            return "topo:\n" + sb;
+        }
+
+        /// <summary>调一个 static(DbElement)→DbElement；**三种结果分开说**：抛异常 / 无效 / 真值。</summary>
+        private static string CallEl(Type t, string m, DbElement el)
+        {
+            try
+            {
+                var mi = t.GetMethod(m, BindingFlags.Public | BindingFlags.Static, null, new[] { typeof(DbElement) }, null);
+                if (mi == null) return "(这个版本没有 " + m + ")";
+                var r = mi.Invoke(null, new object[] { el });
+                if (!(r is DbElement)) return "(回的不是 DbElement)";
+                var e = (DbElement)r;
+                if (!e.IsValid) return "(无 —— 它上面没有这一级)";
+                try { var nm = e.GetAsString(DbAttributeInstance.NAME); return string.IsNullOrWhiteSpace(nm) ? e.ToString() : nm; }
+                catch { return e.ToString(); }
+            }
+            catch (Exception ex) { return "(抛异常：" + Inner(ex) + ")"; }
+        }
+
+        /// <summary>调一个 static(DbElement)→Boolean；★抛异常回"判不了"**不回 false**。</summary>
+        private static string CallBool(Type t, string m, DbElement el)
+        {
+            try
+            {
+                var mi = t.GetMethod(m, BindingFlags.Public | BindingFlags.Static, null, new[] { typeof(DbElement) }, null);
+                if (mi == null) return "(这个版本没有 " + m + ")";
+                var r = mi.Invoke(null, new object[] { el });
+                if (!(r is bool)) return "(回的不是 Boolean)";
+                return ((bool)r) ? "是" : "否";
+            }
+            catch (Exception ex) { return "(**判不了** —— " + Inner(ex) + ")"; }
         }
 
         // ── ④ P&ID ↔ 3D 关联（只读那半）───────────────────────────────────────

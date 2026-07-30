@@ -107,9 +107,9 @@ namespace E3DMcpServer.Tools
                    P("purpose:string:用途码。可选。")),
 
                 // ★2026-07-31 分析批 —— 全量索引钻完后筛的四块。
-                T("e3d_analysis", "★**分析批**（四个动作）: `clash`=**原生碰撞检查**(走 AVEVA Clasher, 结果分**四类**: 撞上/接触/净距不足/**证不了**, 每条带**碰撞点坐标** —— 比自研空间索引多了'碰撞点'与'证不了'两项) · `inbox`=**空间盒内有哪些元素**(给两个对角点) · `rule`=**表达式规则判定**(E3D 内建规则引擎, 如 `HBORE GT 100`, 逐个元素判过/不过/**判不了**) · `assoc`=**P&ID↔3D 关联**(这根管子对应流程图上哪条线; **只读**, 建/断关联属工程决策不由 agent 做)。★全部只读。",
-                   P("action:string:clash | inbox | rule | assoc。必填。"),
-                   P("names:string:元素路径逗号分隔(clash/rule/assoc) 或 盒的第一个角点 `x,y,z`(inbox)。必填。"),
+                T("e3d_analysis", "★**分析批**（四个动作）: `clash`=**原生碰撞检查**(走 AVEVA Clasher, 结果分**四类**: 撞上/接触/净距不足/**证不了**, 每条带**碰撞点坐标** —— 比自研空间索引多了'碰撞点'与'证不了'两项) · `inbox`=**空间盒内有哪些元素**(给两个对角点) · `rule`=**表达式规则判定**(E3D 内建规则引擎, 如 `HBORE GT 100`, 逐个元素判过/不过/**判不了**) · `assoc`=**P&ID↔3D 关联**(这根管子对应流程图上哪条线; **只读**, 建/断关联属工程决策不由 agent 做) · `topo`=**管线归属/流向/首末段**(这个构件属于哪根 PIPE/哪条 BRAN · **流向反没反** · 首末段 —— ★别再拿路径字符串切: E3D 名字是**平名**, 路径不保证反映真实归属)。★全部只读。",
+                   P("action:string:clash | inbox | rule | assoc | topo。必填。"),
+                   P("names:string:元素路径逗号分隔(clash/rule/assoc/topo) 或 盒的第一个角点 `x,y,z`(inbox)。必填。"),
                    P("arg1:string:clash=障碍体路径(可选) · inbox=第二个角点 `x,y,z` · rule=**PML 表达式** · assoc=不用。"),
                    P("arg2:string:inbox=类型过滤(逗号分隔, 可选)。"),
                    P("max:integer:每类最多列多少条, 默认100。★超了会**明说不是没有**。可选。"),
