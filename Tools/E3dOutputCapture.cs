@@ -154,8 +154,10 @@ namespace E3DMcpServer.Tools
         }
 
         // ── 两个候选处理方法：委托是几个参数就绑哪个（见 TryAttach）──────────────
-        // ⚠ 参数类型按文档 "a message and message type" 猜成 (string, int)。
-        //    真机第一次编译/运行会告诉你真实类型，照 AttachError 里报的签名改这里。
+        // ★2026-07-30 反射读出**真签名**（此前注释写的是"按文档猜成 (string,int)"）：
+        //     PdmsOutputEvents.OutputListener.Invoke(PdmsOutput)   ← **一个参数**
+        //   我们的 `object` 形参靠委托逆变绑得上，所以 OnPdmsOutput1 是实际生效的那个。
+        //   真机也证实错误确实流进来了 —— **绑定不是问题**。
         private void OnPdmsOutput(object message, object messageType)
         {
             Add(message);
@@ -223,11 +225,47 @@ namespace E3DMcpServer.Tools
             return fallback;
         }
 
+        /// <summary>
+        /// 收到的**全部**事件数（不管有没有文本）。
+        ///
+        /// ★为什么要单独记：真机 §21 实测 `Q NAME`/`Q TYPE`/`Q ATT`/`Q MEM`/`LIST`/`$Q`
+        ///   **一条输出都拿不到**，而 `Q POS`/`Q SPEC`/`Q ALL`（都是报错）拿得到。
+        ///   只看 `_lines` 分不清两种情形：
+        ///     ① 事件根本没来（正常打印走的不是这条通道）
+        ///     ② 事件来了但文本是空的（我们的 TextOf 取错字段）
+        ///   —— 这两种的修法完全不同。有了这个计数，下一跑就能**分得开**。
+        /// </summary>
+        internal static int TotalEvents;
+        /// <summary>收到过的 Type/Category 取值（去重）。★如果只有 ERROR 一类，
+        /// 就证明这条通道**天然只流错误**，而不是我们漏收了。</summary>
+        internal static readonly System.Collections.Generic.HashSet<string> SeenKinds =
+            new System.Collections.Generic.HashSet<string>();
+
+        /// <summary>把收到过的 Type/Category 拼成一行（给回执用）。</summary>
+        internal static string SeenKindsText()
+        {
+            lock (_gate) { return string.Join(" ", new List<string>(SeenKinds).ToArray()); }
+        }
+
         private void Add(object message)
         {
             try
             {
                 if (message == null) return;
+                System.Threading.Interlocked.Increment(ref TotalEvents);
+                // ★把 PdmsOutput 的 Type/Category 记下来 —— 官方字段，反射读出来的真名。
+                //   不读它 = 永远说不出"为什么只流错误"（这条欠了好几跑）。
+                try
+                {
+                    var mt = message.GetType();
+                    var pT = mt.GetProperty("Type");
+                    var pC = mt.GetProperty("Category");
+                    string kt = pT != null ? Convert.ToString(pT.GetValue(message, null)) : null;
+                    string kc = pC != null ? Convert.ToString(pC.GetValue(message, null)) : null;
+                    var kind = (kt ?? "?") + "/" + (kc ?? "?");
+                    lock (_gate) { if (SeenKinds.Count < 40) SeenKinds.Add(kind); }
+                }
+                catch { /* 记不到种类不影响收正文 */ }
                 var s = TextOf(message);
                 if (string.IsNullOrEmpty(s)) return;
                 lock (_gate)

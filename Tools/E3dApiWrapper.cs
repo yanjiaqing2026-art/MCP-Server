@@ -1484,7 +1484,24 @@ namespace E3DMcpServer.Tools
                 {
                     string text = cap.Text();
                     if (string.IsNullOrEmpty(text))
-                        sb.AppendLine("--- E3D 输出：(空 —— 这条命令没往命令窗口打印任何东西) ---");
+                    {
+                        // ★★2026-07-30：原来这里只写「没打印任何东西」——**那是个推断，不是观测**。
+                        //   真机 §21 实测：`Q NAME`/`Q TYPE`/`Q ATT`/`Q MEM`/`LIST`/`$Q` 全空，
+                        //   而 `Q POS`/`Q SPEC`/`Q ALL`（都是报错）有值。光看这一句分不清两件事：
+                        //     ① 事件根本没来（正常打印走的**不是**这条通道）
+                        //     ② 事件来了但文本取空了（我们的 TextOf 取错字段）
+                        //   —— 两种修法完全不同，而我们已经在这上面卡了好几跑。
+                        //   现在把**收到的事件总数**与**Type/Category 取值**一起报出来，
+                        //   下一跑就能当场分开。★这是观测，不是结论。
+                        sb.AppendLine("--- E3D 输出：(空) ---");
+                        sb.AppendLine("  收到事件数: " + E3dOutputCapture.TotalEvents
+                            + "  (0 = 这条命令的输出**根本不走 PdmsOutputEvents**；"
+                            + ">0 = 事件来了但文本取空，是 TextOf 的字段取错)");
+                        var kinds = E3dOutputCapture.SeenKindsText();
+                        if (!string.IsNullOrEmpty(kinds))
+                            sb.AppendLine("  本进程收到过的 Type/Category: " + kinds
+                                + "  (若只有报错那一类 → 这条通道**天然只流错误**，不是我们漏收)");
+                    }
                     else
                     {
                         sb.AppendLine("--- E3D 输出 ---");

@@ -45,6 +45,12 @@ namespace E3DMcpServer.Tools
     /// </summary>
     internal static class E3dTypeSchema
     {
+        // ★★2026-07-30 第一次真编译抓到的：`OwnerTypes` / `MemberTypes` / `DatabaseTypes`
+        //   是**方法**（要加括号），不是属性。我按属性写，编译器直接报
+        //   `CS0428 无法将方法组转换为非委托类型`。
+        //   ★这正是**DLL 层证据等级**的实例：反射列出来是 `MemberTypes`（不带括号），
+        //     **看不出是方法还是属性** —— XML 层有 `M:` / `P:` 前缀能分清，DLL 层没有。
+        //     结论：拿 DLL 签名写代码，**必须编译过才算数**。
         /// <summary>
         /// 查一个类型的完整 schema；<paramref name="typeName"/> 为空则列出全部类型。
         /// </summary>
@@ -108,22 +114,35 @@ namespace E3DMcpServer.Tools
             Line(sb, "伪类型(pseudo)", Safe(() => t.IsPseudo.ToString(), "?"));
 
             // ★★这两行就是 §20/§23/§26 试了三跑的答案。
-            Line(sb, "★合法 owner 类型", Names(() => t.OwnerTypes));
-            Line(sb, "★可包含的成员类型", Names(() => t.MemberTypes));
+            Line(sb, "★合法 owner 类型", Names(() => t.OwnerTypes()));
+            Line(sb, "★可包含的成员类型", Names(() => t.MemberTypes()));
 
             // ★CONNECT 那四跑的答案。文档原话："1 or 2, if this Element type has valid connections"
             Line(sb, "★可连接数(ValidConnections)", Safe(() => t.ValidConnections.ToString(), "(取不到)")
                  + "  ← 官方原话 \"1 or 2, if this Element type has valid connections\"；0/取不到 = 这个类型不参与连接");
 
-            Line(sb, "所在数据库类型", Names2(() => t.DatabaseTypes));
+            Line(sb, "所在数据库类型", Names2(() => t.DatabaseTypes()));
 
             // ★这一行取代插件写死的 34 个属性名单。
             string attrs;
             try
             {
-                var a = t.SystemAttributes;
-                attrs = a == null ? "(取不到)" : string.Join(" ", a.Select(z => Safe(() => z.Name, "?")).Take(200));
-                if (a != null && a.Length > 200) attrs += "  ★另有 " + (a.Length - 200) + " 个未列出";
+                // ★同上：`SystemAttributes` 也是**方法**不是属性（第二次栽在同一处）。
+                var a = t.SystemAttributes();
+                if (a == null) { attrs = "(取不到)"; }
+                else
+                {
+                    // ★不用 lambda —— C# 7.3 推断不出委托类型（CS8370）。写成显式循环最省事。
+                    var names = new List<string>();
+                    for (int i = 0; i < a.Length && i < 200; i++)
+                    {
+                        string nm = null;
+                        try { nm = a[i].Name; } catch { nm = null; }
+                        names.Add(string.IsNullOrWhiteSpace(nm) ? "?" : nm);
+                    }
+                    attrs = string.Join(" ", names);
+                    if (a.Length > 200) attrs += "  ★另有 " + (a.Length - 200) + " 个未列出";
+                }
             }
             catch (Exception ex) { attrs = "(取不到：" + ex.Message + ")"; }
             Line(sb, "★真实属性(SystemAttributes)", attrs);
@@ -137,17 +156,17 @@ namespace E3DMcpServer.Tools
             sb.Append("  ").Append(k).Append(": ").Append(string.IsNullOrWhiteSpace(v) ? "(取不到)" : v).Append("\n");
         }
 
-        private static string Safe(Func<string> f, string dft)
+        private static string Safe(System.Func<string> f, string dft)
         {
             try { var v = f(); return string.IsNullOrWhiteSpace(v) ? dft : v; } catch { return dft; }
         }
 
-        private static string SafeName(Func<DbElementType> f)
+        private static string SafeName(System.Func<DbElementType> f)
         {
             try { var t = f(); return t.IsValid ? t.Name : "(取不到)"; } catch { return "(取不到)"; }
         }
 
-        private static string Names(Func<DbElementType[]> f)
+        private static string Names(System.Func<DbElementType[]> f)
         {
             try
             {
@@ -158,7 +177,7 @@ namespace E3DMcpServer.Tools
             catch (Exception ex) { return "(取不到：" + ex.Message + ")"; }
         }
 
-        private static string Names2(Func<Array> f)
+        private static string Names2(System.Func<Array> f)
         {
             try
             {
