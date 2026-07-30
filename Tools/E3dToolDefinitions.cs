@@ -106,6 +106,14 @@ namespace E3DMcpServer.Tools
                    P("value:string:过滤属性值, 如 '150'。可选。"),
                    P("purpose:string:用途码。可选。")),
 
+                // ★2026-07-31 —— 回答「MCP 能不能完全拿到 E3D 反馈」的那一半。
+                T("e3d_datal_dump", "★**把元素的全部数据导出来**（走 AVEVA 官方 DatalListing，即 E3D 里 DATAL 命令背后的引擎）。用于: 一次拿到一批元素的完整属性/结构, 比逐个 attr_read 快一个数量级; 也用于把工程师建好的真实构件**整份读出来照抄**。★与 e3d_attr_read 的分工: attr_read 点名读几个属性, 本工具**全量导**。⚠ **命令窗口的正常打印(Q/LIST 那类)MCP 拿不到** —— PdmsOutputEvents 只流错误, 那是能力边界; 但**数据本身**走这条能全量拿到。",
+                   P("names:string:要导出的元素路径, 逗号分隔。必填。"),
+                   P("brief:boolean:简表(true)还是完整(false), 默认 false。可选。"),
+                   P("comments:boolean:是否含注释, 默认 false。可选。"),
+                   P("max_chars:integer:回执最多多少字符, 默认60000。★超了会**明说已截断**。可选。"),
+                   R("names")),
+
                 // ★2026-07-31 原生 API 批（全量索引挖完后按「签名清楚+对着已知痛点」筛的五个）。
                 T("e3d_native_ops", "★**AVEVA 原生 API 杂项**（一个工具五个动作，全部离线可答、不发 PML）: `bore`=官方通径换算(我们一直自己算, 栽过'小1000倍') · `members`=成员遍历(解掉 !!ce.MEM 拿不回数组那个缺口, 可按类型过滤) · `copytree`=**整棵子树复制**(typical 复用: 把建好的一台泵/一榀框架复用到另一处) · `attrvalid`=**这个类型有没有这个属性**(此前要发一条看回不回 (2,201)) · `namecheck`=名字格式预检(此前要真机回 (41,12) 才知道)。★copytree 是**写操作且不可逆**。",
                    P("action:string:bore | members | copytree | attrvalid | namecheck。必填。"),
