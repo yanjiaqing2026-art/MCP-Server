@@ -467,7 +467,7 @@ namespace E3DMcpServer.Tools
         {
             var names = a?["names"]?.Value<string>();
             if (string.IsNullOrWhiteSpace(names)) return Err("请提供 names（PIPE 元素路径，逗号分隔）。");
-            return Ok(E3dFabCheck.Run(names, a?["max"]?.Value<int>() ?? 40));
+            return Ok(E3dFabCheck.Run(a?["action"]?.Value<string>(), names, a?["max"]?.Value<int>() ?? 40));
         }
 
         /// <summary>

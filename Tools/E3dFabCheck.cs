@@ -49,11 +49,16 @@ namespace E3DMcpServer.Tools
         private const string Asm = "PipeFabricationAddin";
         private const string Ns = "Aveva.Piping.Implementation.PipeFabrication.FabricationCheck.";
 
-        public static string Run(string names, int max)
+        public static string Run(string action, string names, int max)
         {
             if (max <= 0) max = 40;
             if (string.IsNullOrWhiteSpace(names))
-                return "fabcheck: 缺 names（PIPE 元素路径，逗号分隔）。";
+                return "fabcheck: 缺 names（元素路径，逗号分隔）。";
+            var act = (action ?? "pipe").Trim().ToLowerInvariant();
+            if (act == "machine") return Machine(names, max);
+            if (act != "pipe" && act != "")
+                return "fabcheck: 不认识的 action「" + action + "」。可选："
+                     + "pipe(这根管本身合不合规，默认) · machine(**车间的机器做不做得了**)";
 
             Type tPipe = Type.GetType(Ns + "PFPipe, " + Asm);
             if (tPipe == null)
@@ -168,6 +173,91 @@ namespace E3DMcpServer.Tools
                 .Append("⚠ LoadSpools 是否会在库里留下临时元素**尚未验证** —— 本工具因此按写对待；\n")
                 .Append("  它**从不**调 Create*/Delete*/Rename*（那些是真写库）。\n\n");
             return head + sb.ToString();
+        }
+
+        // ── ② 机器能力：车间的弯管机/焊机做不做得了 ─────────────────────────────
+        /// <summary>
+        /// <c>Aveva.Model.Piping.Fabrication.FabricationMachineManager</c>（abstract + 全 static，
+        /// 反射直调）。它与上面的 <c>pipe</c> 是**两个不同的问题**，别混：
+        ///   · <c>pipe</c>    ：这根管**本身**合不合预制规范（长度/余量/半径一致性…）
+        ///   · <c>machine</c> ：**这个车间现有的机器**做不做得了（弯管机接不接、焊机接不接）
+        /// 同一根管在 A 厂做得了、B 厂做不了 —— 所以这两个问题必须分开问、分开答。
+        ///
+        /// 用到的（全部只读）：
+        ///   <c>CanFabricatePipePiece(el)</c> · <c>BendingMachineAcceptsPipePiece(el)</c> ·
+        ///   <c>WeldingMachineAcceptsPipePiece(el)</c> ·
+        ///   <c>FindMaxPipeLength(el)</c> / <c>FindMaxAcceptablePipeLength(el)</c>
+        ///     ★**最大可制造管长** —— 这是个硬数字，我们此前只能猜。
+        ///
+        /// ★**刻意不调**的（同类上有，但会改状态）：
+        ///   <c>SetBendingMachine</c> / <c>SetWeldingMachine</c> / <c>RefreshBendingMachine</c>
+        ///     —— 那是**换车间的机器**，属工程决策；
+        ///   <c>RevalidatePipePiece</c> —— 名字带 Re-validate，可能写回，没证据就不碰；
+        ///   <c>GetBendingMachineResult()</c> 的**无参重载** —— 它读的是"当前选中的机器"，
+        ///     那是我们不控制的会话状态，读回来的数说不清是谁的。只用带 DbElement 的重载。
+        /// </summary>
+        private static string Machine(string names, int max)
+        {
+            var t = Type.GetType("Aveva.Model.Piping.Fabrication.FabricationMachineManager, Aveva.Model.Piping");
+            if (t == null)
+                return "fabcheck.machine: 找不到 FabricationMachineManager —— **这套 E3D 没装 Aveva.Model.Piping**。\n"
+                     + "★这不等于\"机器做得了\"，是**没查**。";
+
+            var sb = new StringBuilder();
+            int n = 0;
+            foreach (var raw in names.Split(','))
+            {
+                var p = (raw ?? "").Trim();
+                if (p.Length == 0) continue;
+                if (++n > max) { sb.Append("★只处理前 ").Append(max).Append(" 个（不是没有）\n"); break; }
+
+                DbElement el;
+                try
+                {
+                    el = DbElement.GetElement(p);
+                    if (!el.IsValid) { sb.Append("── ").Append(p).Append("\n   ✗ 不是有效元素。\n"); continue; }
+                }
+                catch (Exception ex) { sb.Append("── ").Append(p).Append("\n   ✗ 解析抛异常：").Append(Inner(ex)).Append("\n"); continue; }
+
+                sb.Append("── ").Append(p).Append("\n");
+                sb.Append("   总体能不能做：").Append(Bool(t, "CanFabricatePipePiece", el)).Append("\n");
+                sb.Append("   弯管机接不接：").Append(Bool(t, "BendingMachineAcceptsPipePiece", el)).Append("\n");
+                sb.Append("   焊    机接不接：").Append(Bool(t, "WeldingMachineAcceptsPipePiece", el)).Append("\n");
+                sb.Append("   最大管长：").Append(Num(t, "FindMaxPipeLength", el)).Append("\n");
+                sb.Append("   最大可接受管长：").Append(Num(t, "FindMaxAcceptablePipeLength", el)).Append("\n");
+            }
+            return "fabcheck.machine（**车间机器**做不做得了 —— 与 action=pipe 的\"这根管本身合不合规\"是两个问题）：\n"
+                 + sb
+                 + "★注意：这答的是**这个项目当前配置的机器**。换个车间答案可能不同。\n";
+        }
+
+        /// <summary>static(DbElement)→Boolean；★抛异常回「判不了」**不回 false**。</summary>
+        private static string Bool(Type t, string m, DbElement el)
+        {
+            try
+            {
+                var mi = t.GetMethod(m, BindingFlags.Public | BindingFlags.Static, null, new[] { typeof(DbElement) }, null);
+                if (mi == null) return "(这个版本没有 " + m + ")";
+                var r = mi.Invoke(null, new object[] { el });
+                if (!(r is bool)) return "(回的不是 Boolean)";
+                return ((bool)r) ? "✅ 是" : "❌ 否";
+            }
+            catch (Exception ex) { return "(**判不了** —— " + Inner(ex) + ")"; }
+        }
+
+        /// <summary>static(DbElement)→Double；★同样，问不出来就说问不出来。</summary>
+        private static string Num(Type t, string m, DbElement el)
+        {
+            try
+            {
+                var mi = t.GetMethod(m, BindingFlags.Public | BindingFlags.Static, null, new[] { typeof(DbElement) }, null);
+                if (mi == null) return "(这个版本没有 " + m + ")";
+                var r = mi.Invoke(null, new object[] { el });
+                if (r == null) return "(回 null)";
+                // ★单位不标死：AVEVA 内部长度多为 mm，但**没有文档确认**，标了就是编。
+                return Convert.ToString(r) + "  （单位未经确认，别直接当 mm 用）";
+            }
+            catch (Exception ex) { return "(**判不了** —— " + Inner(ex) + ")"; }
         }
 
         // ── 小工具 ──────────────────────────────────────────────────────────────
