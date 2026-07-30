@@ -1,4 +1,4 @@
-<Project Sdk="Microsoft.NET.Sdk">
+﻿<Project Sdk="Microsoft.NET.Sdk">
   <PropertyGroup>
     <TargetFramework>net472</TargetFramework>
     <AssemblyName>MCPServer</AssemblyName>
@@ -23,6 +23,8 @@
     <!-- 2026-07-29 新增：拿 E3D 打印输出 / 读真实几何图元。⚠ 未编译验证，见各文件头注 -->
     <Compile Include="Tools\E3dOutputCapture.cs" />
     <Compile Include="Tools\E3dCsgDump.cs" />
+    <Compile Include="Tools\E3dCollectQuery.cs" />
+    <Compile Include="Tools\E3dTypeSchema.cs" />
     <Reference Include="System.Windows.Forms" />
     <Reference Include="Aveva.ApplicationFramework">
       <HintPath>C:\项目\17-E3D插件\lib\Aveva.ApplicationFramework.dll</HintPath>
@@ -58,6 +60,10 @@
          所以 E3dCsgDump 用反射把这两个对象的属性原样 dump，不猜字段名。 -->
     <Reference Include="Aveva.Core.Maths.Geometry">
       <HintPath>C:\项目\17-E3D插件\lib\Aveva.Core.Maths.Geometry.dll</HintPath>
+      <Private>False</Private>
+    </Reference>
+    <Reference Include="Aveva.E3D.Select">
+      <HintPath>C:\项目\17-E3D插件\lib\Aveva.E3D.Select.dll</HintPath>
       <Private>False</Private>
     </Reference>
     <Reference Include="PMLNet">
