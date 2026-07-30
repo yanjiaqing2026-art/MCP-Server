@@ -115,6 +115,22 @@ namespace E3DMcpServer.Tools
                    P("max:integer:每类最多列多少条, 默认100。★超了会**明说不是没有**。可选。"),
                    R("action"), R("names")),
 
+                // ★2026-07-31 状态签核 —— E3D **自带**的 Status/CommentThread 体系（见 E3dStatus.cs 头注）。
+                //   读写**刻意拆成两个工具**：读随便调；写在 09 侧登记 NEVER_AUTO，任何档位必人签。
+                T("e3d_status_read", "★**读元素的签核状态与留言**（E3D 自带的 Status 体系, 不是我们自造的）。三个动作: `defs`=这个项目**配了哪些状态体系**及其取值表 · `read`=某些元素**当前是什么状态**+★**合法能推进到哪些值**(ValidTransitions, 查出来的不是猜的) · `comments`=元素上的**留言串**。★**建模前先读这个**: 已签发/已批准的元素**不要改**——今天 agent 对此一无所知, 改一个已发布的和改一个草稿是一样的。★区分三种情况: 没装 DataManagement / 项目没配状态体系 / 元素没挂状态——三者含义完全不同, 回执分开报。★只读。",
+                   P("action:string:defs | read | comments。必填。"),
+                   P("names:string:元素路径逗号分隔（read/comments 用；defs 不用）。"),
+                   P("max:integer:每个元素最多列多少条, 默认100。★超了会**明说不是没有**。可选。"),
+                   R("action")),
+
+                T("e3d_status_write", "⚠**写签核状态 / 发留言**——**状态推进等于签字**, 因此这个工具在任何免审档位下都**必须人工签核**。动作: `assign`/`remove`=给元素挂上/摘掉某套状态 · `promote`/`demote`=推进/回退一档 · `set`=直接置成某个值 · `comment`=改状态备注 · `post`=**在元素上开一条留言串**(工程师在 E3D 里直接看得到)。★用前先 `e3d_status_read action=read` 看**合法去向**, 不要盲推。★留言与状态一样必人签——**留言是发到全项目可见的地方**, 等同对外发言。★这套 API 回的是 Boolean, **false 时 E3D 常常不给原因**, 回执里写 false 就是真 false。",
+                   P("action:string:assign | remove | promote | demote | set | comment | post。必填。"),
+                   P("names:string:元素路径, 逗号分隔。必填。"),
+                   P("status:string:状态体系名(post 时是留言标题)。★用 e3d_status_read action=defs 先看有哪些, **不要猜名字**。"),
+                   P("value:string:目标状态值名（set 用）。"),
+                   P("text:string:备注/留言正文（comment/post 必填；promote/demote/assign 可选）。"),
+                   R("action"), R("names")),
+
                 // ★2026-07-31 —— 回答「MCP 能不能完全拿到 E3D 反馈」的那一半。
                 T("e3d_datal_dump", "★**把元素的全部数据导出来**（走 AVEVA 官方 DatalListing，即 E3D 里 DATAL 命令背后的引擎）。用于: 一次拿到一批元素的完整属性/结构, 比逐个 attr_read 快一个数量级; 也用于把工程师建好的真实构件**整份读出来照抄**。★与 e3d_attr_read 的分工: attr_read 点名读几个属性, 本工具**全量导**。⚠ **命令窗口的正常打印(Q/LIST 那类)MCP 拿不到** —— PdmsOutputEvents 只流错误, 那是能力边界; 但**数据本身**走这条能全量拿到。",
                    P("names:string:要导出的元素路径, 逗号分隔。必填。"),

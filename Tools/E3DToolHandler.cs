@@ -129,6 +129,8 @@ namespace E3DMcpServer.Tools
                     case "e3d_native_ops":         return HandleNativeOps(args);
                     case "e3d_datal_dump":         return HandleDatalDump(args);
                     case "e3d_analysis":           return HandleAnalysis(args);
+                    case "e3d_status_read":        return HandleStatus(args, false);
+                    case "e3d_status_write":       return HandleStatus(args, true);
                     case "e3d_spec_select":       return HandleSpecSelect(args);
                     case "e3d_bom":                return HandleBom(args);
                     case "e3d_component_info":     return HandleComponentInfo(args);
@@ -457,6 +459,28 @@ namespace E3DMcpServer.Tools
             if (string.IsNullOrWhiteSpace(names)) return Err("请提供 names。");
             return Ok(E3dAnalysis.Run(action, names, a?["arg1"]?.Value<string>(),
                                       a?["arg2"]?.Value<string>(), a?["max"]?.Value<int>() ?? 100));
+        }
+
+        /// <summary>
+        /// ★状态签核 + 留言 —— 见 E3dStatus.cs 头注。
+        /// <paramref name="write"/> 决定**这次调用允许哪些动作**：读工具里混进写动作
+        /// 就是绕过写闸，所以在这一层挡住（而不是靠调用方守规矩）。
+        /// </summary>
+        ToolCallResult HandleStatus(JObject a, bool write)
+        {
+            var action = (a?["action"]?.Value<string>() ?? "").Trim().ToLowerInvariant();
+            if (string.IsNullOrWhiteSpace(action)) return Err("请提供 action。");
+            bool isRead = action == "defs" || action == "read" || action == "comments";
+            if (write && isRead)
+                return Err("「" + action + "」是只读动作，请用 e3d_status_read（写工具只走写动作）。");
+            if (!write && !isRead)
+                return Err("「" + action + "」是**写**动作（改签核状态 / 发留言），必须走 e3d_status_write —— "
+                         + "那条路会要求工程师人工签核。这里拒发。");
+            var names = a?["names"]?.Value<string>();
+            if (action != "defs" && string.IsNullOrWhiteSpace(names)) return Err("请提供 names（元素路径，逗号分隔）。");
+            return Ok(E3dStatus.Run(action, names, a?["status"]?.Value<string>(),
+                                    a?["value"]?.Value<string>(), a?["text"]?.Value<string>(),
+                                    a?["max"]?.Value<int>() ?? 100));
         }
 
         /// <summary>★DATAL 全量导出 —— 见 E3dDatalDump.cs 头注（MCP 反馈边界在哪）。</summary>

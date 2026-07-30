@@ -72,6 +72,61 @@ namespace E3DMcpServer.Tools
                 sb.Append("  建议带上一个**本机现查的**等级名再跑一次（等级名不写进任何文件）。\n\n");
             }
 
+            // ═══ ★路径 0（2026-07-31 新增，**这才是正解**）═══════════════════════
+            // 全量索引钻到 `Aveva.Core.DataManagement.Utilities`：
+            //     `PMLNetAny ToPMLNetAnyTemporary(DbElement)`   ← **直接转换**
+            //     `DbElement ToDbElement(PMLNetAny)`            ← 反向也有
+            // —— 而下面路径 A/B 是我**没找到它之前**绕的路（发 PML 建全局变量再取回）。
+            // ★留着 A/B 不删：万一这套 E3D 没装 DataManagement，它们还是退路；
+            //   但**先试路径 0** —— 它不发任何 PML、不留全局变量、也不依赖 PML 解释器。
+            sb.Append("── 0) ★ToPMLNetAnyTemporary（直接转换，不发 PML）──\n");
+            if (string.IsNullOrWhiteSpace(spec))
+            {
+                sb.Append("   跳过（没给 spec）\n");
+            }
+            else
+            {
+                try
+                {
+                    var ut = Type.GetType("Aveva.Core.DataManagement.Utilities, Aveva.Core.DataManagement");
+                    if (ut == null)
+                    {
+                        sb.Append("   找不到 Aveva.Core.DataManagement.Utilities —— 这套 E3D 没装 DataManagement。\n");
+                        sb.Append("   ★这不是「转换不行」，是**那个程序集不在**（如实区分）。走下面 A/B 退路。\n");
+                    }
+                    else
+                    {
+                        var conv = ut.GetMethod("ToPMLNetAnyTemporary", new[] { typeof(DbElement) });
+                        if (conv == null) sb.Append("   Utilities 上没有 ToPMLNetAnyTemporary(DbElement)。\n");
+                        else
+                        {
+                            var el = DbElement.GetElement(spec.Trim());
+                            if (!el.IsValid) sb.Append("   等级解析不出元素（名字不存在？）。\n");
+                            else
+                            {
+                                var any = conv.Invoke(null, new object[] { el });
+                                if (any == null) sb.Append("   ToPMLNetAnyTemporary 回 null。\n");
+                                else
+                                {
+                                    // ★拿到了就把它自己的 type() 打出来 —— 这是判据，不是装饰
+                                    string ty = "(取不到)";
+                                    try
+                                    {
+                                        var m = any.GetType().GetMethod("type", Type.EmptyTypes);
+                                        if (m != null) ty = Convert.ToString(m.Invoke(any, null));
+                                    }
+                                    catch { }
+                                    sb.Append("   ✅ 拿到 PMLNetAny，type() = ").Append(ty).Append("\n");
+                                    sb.Append("   ★这条通了就**不用**下面 A/B 那两条绕路了。\n");
+                                }
+                            }
+                        }
+                    }
+                }
+                catch (Exception ex0) { sb.Append("   抛异常：").Append(ex0.GetBaseException().Message).Append("\n"); }
+            }
+            sb.Append("\n");
+
             // 路径 A：先用 PML 把等级挂到全局变量上，再 getGlobalVariable 取回来
             sb.Append("── A) getGlobalVariable（先用 PML 建全局变量，再取回）──\n");
             if (string.IsNullOrWhiteSpace(spec))
