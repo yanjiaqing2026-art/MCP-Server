@@ -30,6 +30,7 @@
     <Compile Include="Tools\E3dDatalDump.cs" />
     <Compile Include="Tools\E3dAnalysis.cs" />
     <Compile Include="Tools\E3dStatus.cs" />
+    <Compile Include="Tools\E3dFabCheck.cs" />
     <Reference Include="System.Windows.Forms" />
     <Reference Include="Aveva.ApplicationFramework">
       <HintPath>C:\项目\17-E3D插件\lib\Aveva.ApplicationFramework.dll</HintPath>

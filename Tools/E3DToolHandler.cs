@@ -129,6 +129,7 @@ namespace E3DMcpServer.Tools
                     case "e3d_native_ops":         return HandleNativeOps(args);
                     case "e3d_datal_dump":         return HandleDatalDump(args);
                     case "e3d_analysis":           return HandleAnalysis(args);
+                    case "e3d_fab_check":          return HandleFabCheck(args);
                     case "e3d_status_read":        return HandleStatus(args, false);
                     case "e3d_status_write":       return HandleStatus(args, true);
                     case "e3d_spec_select":       return HandleSpecSelect(args);
@@ -459,6 +460,14 @@ namespace E3DMcpServer.Tools
             if (string.IsNullOrWhiteSpace(names)) return Err("请提供 names。");
             return Ok(E3dAnalysis.Run(action, names, a?["arg1"]?.Value<string>(),
                                       a?["arg2"]?.Value<string>(), a?["max"]?.Value<int>() ?? 100));
+        }
+
+        /// <summary>★管道可制造性检查 —— 见 E3dFabCheck.cs 头注（含"为什么按写对待"）。</summary>
+        ToolCallResult HandleFabCheck(JObject a)
+        {
+            var names = a?["names"]?.Value<string>();
+            if (string.IsNullOrWhiteSpace(names)) return Err("请提供 names（PIPE 元素路径，逗号分隔）。");
+            return Ok(E3dFabCheck.Run(names, a?["max"]?.Value<int>() ?? 40));
         }
 
         /// <summary>
