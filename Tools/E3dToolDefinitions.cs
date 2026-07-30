@@ -106,6 +106,15 @@ namespace E3DMcpServer.Tools
                    P("value:string:过滤属性值, 如 '150'。可选。"),
                    P("purpose:string:用途码。可选。")),
 
+                // ★2026-07-31 分析批 —— 全量索引钻完后筛的四块。
+                T("e3d_analysis", "★**分析批**（四个动作）: `clash`=**原生碰撞检查**(走 AVEVA Clasher, 结果分**四类**: 撞上/接触/净距不足/**证不了**, 每条带**碰撞点坐标** —— 比自研空间索引多了'碰撞点'与'证不了'两项) · `inbox`=**空间盒内有哪些元素**(给两个对角点) · `rule`=**表达式规则判定**(E3D 内建规则引擎, 如 `HBORE GT 100`, 逐个元素判过/不过/**判不了**) · `assoc`=**P&ID↔3D 关联**(这根管子对应流程图上哪条线; **只读**, 建/断关联属工程决策不由 agent 做)。★全部只读。",
+                   P("action:string:clash | inbox | rule | assoc。必填。"),
+                   P("names:string:元素路径逗号分隔(clash/rule/assoc) 或 盒的第一个角点 `x,y,z`(inbox)。必填。"),
+                   P("arg1:string:clash=障碍体路径(可选) · inbox=第二个角点 `x,y,z` · rule=**PML 表达式** · assoc=不用。"),
+                   P("arg2:string:inbox=类型过滤(逗号分隔, 可选)。"),
+                   P("max:integer:每类最多列多少条, 默认100。★超了会**明说不是没有**。可选。"),
+                   R("action"), R("names")),
+
                 // ★2026-07-31 —— 回答「MCP 能不能完全拿到 E3D 反馈」的那一半。
                 T("e3d_datal_dump", "★**把元素的全部数据导出来**（走 AVEVA 官方 DatalListing，即 E3D 里 DATAL 命令背后的引擎）。用于: 一次拿到一批元素的完整属性/结构, 比逐个 attr_read 快一个数量级; 也用于把工程师建好的真实构件**整份读出来照抄**。★与 e3d_attr_read 的分工: attr_read 点名读几个属性, 本工具**全量导**。⚠ **命令窗口的正常打印(Q/LIST 那类)MCP 拿不到** —— PdmsOutputEvents 只流错误, 那是能力边界; 但**数据本身**走这条能全量拿到。",
                    P("names:string:要导出的元素路径, 逗号分隔。必填。"),

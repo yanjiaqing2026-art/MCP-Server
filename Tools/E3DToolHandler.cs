@@ -128,6 +128,7 @@ namespace E3DMcpServer.Tools
                     case "e3d_type_schema":        return HandleTypeSchema(args);
                     case "e3d_native_ops":         return HandleNativeOps(args);
                     case "e3d_datal_dump":         return HandleDatalDump(args);
+                    case "e3d_analysis":           return HandleAnalysis(args);
                     case "e3d_spec_select":       return HandleSpecSelect(args);
                     case "e3d_bom":                return HandleBom(args);
                     case "e3d_component_info":     return HandleComponentInfo(args);
@@ -447,6 +448,17 @@ namespace E3DMcpServer.Tools
         /// <summary>
         /// ★类型 schema —— 见 E3dTypeSchema.cs 头注（为什么这个工具最该早点做）。
         /// </summary>
+        /// <summary>★分析批 —— 见 E3dAnalysis.cs 头注（为什么是这四块）。</summary>
+        ToolCallResult HandleAnalysis(JObject a)
+        {
+            var action = a?["action"]?.Value<string>();
+            var names = a?["names"]?.Value<string>();
+            if (string.IsNullOrWhiteSpace(action)) return Err("请提供 action（clash/inbox/rule/assoc）。");
+            if (string.IsNullOrWhiteSpace(names)) return Err("请提供 names。");
+            return Ok(E3dAnalysis.Run(action, names, a?["arg1"]?.Value<string>(),
+                                      a?["arg2"]?.Value<string>(), a?["max"]?.Value<int>() ?? 100));
+        }
+
         /// <summary>★DATAL 全量导出 —— 见 E3dDatalDump.cs 头注（MCP 反馈边界在哪）。</summary>
         ToolCallResult HandleDatalDump(JObject a)
         {
