@@ -97,6 +97,12 @@ namespace E3DMcpServer.Tools
                 T("e3d_pml_exec_verbose", "执行 PML 命令并**把 E3D 打印到命令窗口的输出一起带回来**。与 e3d_pml_exec 的区别: 后者只回'成/败 + 失败时的报错', 成功时零内容, 而 Q SPEC / $Q / LIST 这类【打印型】命令的结果全进命令窗口拿不到。用它可以真正读到: $Q 语法提示(官方的下一个合法命令词, 手册说'真机 $Q 为准')、Q SPEC 的规格清单、Q ATT 的属性表。回执分两段: 命令成败 + E3D 输出; ★捕获失败会单独说明 —— 那只说明【我们没听见】, 不说明命令没输出、更不说明命令失败。",
                    P("command:string:完整 PML 命令字符串。必填。"), R("command")),
 
+                // ★2026-07-30 —— 用户点破「答案其实都在 dll 和 xml 里」之后加的。
+                // DbElementType 上每一条都是我们试了三四跑的问题的现成答案。
+                T("e3d_type_schema", "★**查元素类型的完整 schema**: 合法 owner 类型 / 可包含的成员类型 / 真实属性名单 / 可连接数 / 短名与全名 / 所在数据库类型。走 AVEVA 原生 DbElementType(OwnerTypes/MemberTypes/SystemAttributes/ValidConnections/ShortName)。**不带 type 参数 = 列出全部类型**(含短名, 直接解掉 SPEC vs SPECIFICATION 那类别名坑)。用于: 建元素前确认该建在什么下面(不用真机试错)、判某类型有没有某属性(不用发一条看回不回 (2,201))、判某类型能不能 CONNECT。★这份是**权威的禁止面** —— ATT 统计只能证明'允许', 证明不了'禁止'。",
+                   P("type:string:元素类型码, 如 'NOZZ' / 'SPECIFICATION'。**留空 = 列出全部类型**。可选。"),
+                   P("max:integer:列全部时最多返回多少个, 默认400。可选。")),
+
                 // ★2026-07-30 第十三跑之后新增 —— 让 agent 能**按条件批量查 E3D**。
                 // 依据: AVEVA 自带 XML 文档 DbCollection.Parse/Evaluate（逐字，不是猜的）。
                 // 走过的两条弯路见 E3dCollectQuery.cs 头注（多行 PML 的块结构 · 临时宏）。

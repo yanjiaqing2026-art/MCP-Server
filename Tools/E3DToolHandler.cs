@@ -125,6 +125,7 @@ namespace E3DMcpServer.Tools
                     case "e3d_spec_query":         return HandleSpecQuery(args);
                     case "e3d_spec_list":          return HandleSpecList(args);
                     case "e3d_collect_query":      return HandleCollectQuery(args);
+                    case "e3d_type_schema":        return HandleTypeSchema(args);
                     case "e3d_bom":                return HandleBom(args);
                     case "e3d_component_info":     return HandleComponentInfo(args);
 
@@ -438,6 +439,16 @@ namespace E3DMcpServer.Tools
             int max = a?["max"]?.Value<int>() ?? 200;
             var attrs = a?["attrs"]?.Value<string>();
             return Ok(E3dCollectQuery.Run(criteria, max, attrs));
+        }
+
+        /// <summary>
+        /// ★类型 schema —— 见 E3dTypeSchema.cs 头注（为什么这个工具最该早点做）。
+        /// </summary>
+        ToolCallResult HandleTypeSchema(JObject a)
+        {
+            var type = a?["type"]?.Value<string>();
+            int max = a?["max"]?.Value<int>() ?? 400;
+            return Ok(E3dTypeSchema.Run(type, max));
         }
 
         ToolCallResult HandlePmlEval(JObject a)
