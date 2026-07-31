@@ -94,7 +94,27 @@ namespace E3DMcpServer.Tools
             {
                 // ★错误文本走既有的 MessageText 提取器 —— 直接 ToString() 会得到
                 //   `…PdmsMessageImpl` 这种类型名（本仓第七跑白跑一整轮就是因为它）。
+                // ⛔ 2026-07-31 第十五跑：这里报出来的消息**可能不是这次调用的**。
+                //   实证：§25 用同样的 `ALL EQUI` 拿到 2802 个；§31 跑了碰撞检查；
+                //   §32 再发同样的 `ALL EQUI`，回的却是
+                //   「Clasher run may not be made unless the override option is used」——
+                //   一条 **Clasher 的消息**出现在 COLLECT 的报错里。
+                //   → `out PdmsMessage` 在 Parse 失败时未必被本次调用填过，
+                //     很可能是**上一条命令留在全局消息缓冲里的残值**。
+                //   ★不能直接把它当原因报：给错的诊断比不给更坏（agent 会照着错的改，而且很有信心）。
+                //   做法：**照登原文**（可能有用），但**标明来源存疑**并给出可判定的下一步。
                 string why = E3dApiWrapper.MsgText(err);
+                bool looksUnrelated = !string.IsNullOrWhiteSpace(why)
+                    && why.IndexOf("syntax", StringComparison.OrdinalIgnoreCase) < 0
+                    && why.IndexOf("collect", StringComparison.OrdinalIgnoreCase) < 0
+                    && why.IndexOf("CP:", StringComparison.OrdinalIgnoreCase) < 0
+                    && why.IndexOf("Undefined", StringComparison.OrdinalIgnoreCase) < 0;
+                if (looksUnrelated)
+                    why += "\n★**这条消息可能不属于本次调用**（Parse 失败时 out PdmsMessage 未必被填，"
+                         + "可能是上一条命令的残值 —— 2026-07-31 实证过一次：COLLECT 的报错里出现了 Clasher 的消息）。"
+                         + "\n★判定办法：拿一个**绝对存在**的准则（如 `ALL EQUI`）再发一次 —— "
+                         + "它也失败 = E3D 处在某种全局状态里（先看上一条命令做了什么）；"
+                         + "它成功 = 本次的准则真有问题，上面那句消息可以忽略。";
                 return "collect: 准则解析失败（criteria=「" + criteria + "」）。" +
                        (string.IsNullOrWhiteSpace(why)
                             ? "E3D 未给出错误文本。"

@@ -2104,13 +2104,81 @@ namespace E3DMcpServer.Tools
         /// </summary>
         internal static bool TryRunPmlPublic(string cmd, out string error) { return TryRunPml(cmd, out error); }
 
+        /// <summary>
+        /// ⛔⛔ <b>2026-07-31 第十五跑根因修复：我们主动要求 E3D 别把错误给我们</b>
+        ///
+        /// 第十五跑日志里 <b>14 次</b> <c>REJECTED: E3D 未给出错误文本</c>，
+        /// 而 §13（错误码字典那节）同时打了输出流，**真错误文本明明在**：
+        /// <code>
+        ///   | REJECTED: E3D 未给出错误文本                                  ← 本方法的返回值
+        ///   | --- E3D 输出 ---
+        ///   | (41,12) Name /PCE-135133 already used. | In line 2 of ...    ← 文本一直都在
+        /// </code>
+        /// 更糟的一条：<c>在 EQUI 下建 ZONE</c> → 回执 <c>OK: 命令已执行</c>，
+        /// 而同一条命令**收到 5 个 ERROR 事件** —— **失败报成了成功**，且在主写路径上。
+        ///
+        /// 根因来自官方 XML 逐字原文（`Aveva.Core.Utilities.xml`，不是推的）：
+        /// <code>
+        ///   Run          "Invoke Command in nested scope"
+        ///   RunInPdms    "Invoke command in nested scope
+        ///                 **outputting error in PDMS rather than returning error**"   ← 我们用的
+        ///   Error        "Error that occurred as a result of invoking command"
+        /// </code>
+        /// **我们调的正是那个「把错误打到 PDMS 而不是返回给你」的变体。**
+        /// 所以 <c>Command.Error</c> 永远是空 —— 不是 E3D 不给，是我们要求它别给。
+        ///
+        /// 修：换成 <c>Run()</c>（**同样是 nested scope**，只改错误去向，不改作用域语义）。
+        /// ★再加一层兜底：`Run()` 之后 <c>Error</c> 仍为空时，从**输出捕获**里捞 ——
+        ///   §13 已经实证那里有 `(41,12)` / `(2,201)` / `(47,15)` 这些真码。
+        ///   两层各有出处，不是"多试一个碰运气"。
+        /// ⚠ 代价如实：改成 `Run()` 后，E3D 命令窗口里**不再显示**这些错误
+        ///   （工程师在 E3D 控制台看不到了）。但它们会进 MCP 回执 —— agent 和工程师
+        ///   在对话里都看得到，而且**能被程序判定**。这个交换对我们是划算的。
+        /// ⚠ **未上真机**：§38 探针专门验这条（同一条必失败的命令，看拿不拿得到码）。
+        /// </summary>
         private static bool TryRunPml(string cmd, out string error)
         {
             var c = Aveva.Core.Utilities.CommandLine.Command.CreateCommand(cmd);
-            bool ok = c.RunInPdms();
+            bool ok;
+            string captured = null;
+            // 捕获作用域包住执行 —— 非重入，已有作用域在跑时 Begin() 会如实回 Attached=false，
+            // 那种情况下就只靠 Command.Error（不抢、不报假）。
+            using (var cap = E3dOutputCapture.Begin())
+            {
+                ok = c.Run();                       // ★不再是 RunInPdms()
+                try { if (cap != null && cap.Attached) captured = cap.Text(); } catch { }
+            }
             LogPml(cmd, ok);
-            error = ok ? null : SafeErrorText(c);
-            return ok;
+            if (ok) { error = null; return true; }
+
+            error = SafeErrorText(c);
+            if (string.IsNullOrWhiteSpace(error) || error.Contains("未给出错误文本"))
+            {
+                // Command.Error 空 → 从输出流捞（§13 实证这里有真码）
+                var fromStream = FirstErrorLine(captured);
+                if (!string.IsNullOrWhiteSpace(fromStream)) error = fromStream;
+            }
+            return false;
+        }
+
+        /// <summary>
+        /// 从捕获到的输出里挑**第一条带错误码的行**（形如 `(41,12) Name ... already used.`）。
+        /// ★只挑带码的：整段输出里还有命令回显、行号等噪音，
+        ///   把噪音当错误原因回给 agent，与"给错的诊断"是同一类错。
+        /// 一条带码的都没有就回 null —— **让调用方如实说"没有文本"，不编**。
+        /// </summary>
+        private static string FirstErrorLine(string captured)
+        {
+            if (string.IsNullOrWhiteSpace(captured)) return null;
+            foreach (var raw in captured.Split('\n'))
+            {
+                var line = (raw ?? "").Trim();
+                if (line.Length == 0) continue;
+                // E3D 错误码形态：(模块号,消息号) 后跟文本
+                if (System.Text.RegularExpressions.Regex.IsMatch(line, @"^\(\s*\d+\s*,\s*\d+\s*\)"))
+                    return line;
+            }
+            return null;
         }
 
         /// <summary>取 Command.Error 的文本，任何异常都吞掉（错误通道自身绝不能抛）。</summary>
