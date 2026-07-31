@@ -410,10 +410,18 @@ namespace E3DMcpServer.Tools
                 }
 
                 // 位置/朝向(POS/HPOS/TPOS/ORI)是**类型化坐标属性**(Aveva.Core.Geometry.Position/Orientation)。
-                // .NET 字符串 SetAttribute 只有 string 重载、Database 层无 string→Position 解析器（一手确证见
-                // docs/E3D-COMMAND-REFERENCE-GROUNDED-2026-06-30.md §8.1），所以字符串 "E.. N.. U.." 写不进 → 之前静默失败。
-                // 修：改走 PML —— CE 导航 + `{ATTR} {value}`，让 PML 自己把 ENU 解析成 Position（绕开字符串 SetAttribute）。
-                // 这样 09 现有的 e3d_attr_set(HPOS/TPOS, "E.. N.. U.. WRT /*") 即可落地。⚠ 逐字形态按真 E3D 日志迭代。
+                // 走 PML —— CE 导航 + `{ATTR} {value}`，让 PML 自己把 ENU 解析成 Position。
+                // 这条是**真机验过的**（第六跑读回 `POS: E 0mm N 0mm U 2100mm`），所以维持不动。
+                //
+                // ⛔ **2026-07-31 更正**：这段原来写的是「.NET 字符串 SetAttribute **只有 string 重载**、
+                //    Database 层无 string→Position 解析器」。**那句话是错的。**
+                //    逐条读完 `Aveva.Core.Database.xml` 后确认：`DbElement.SetAttribute` 有
+                //    `(DbAttribute, Position)` / `(DbAttribute, Orientation)` / `(DbAttribute, Direction)`
+                //    等**全套类型化重载**（还有带 `out PdmsMessage` 的非抛异常变体）。
+                //    真正为真的是「**我们的 wrapper 只包了 string 那一个**」——两句话差着一个 bug 家族。
+                //    → 数值/布尔/引用/日期那几族已改走类型化通道（见下方 SetAttributeTyped）；
+                //      **坐标这条刻意不动**，因为 PML 旁路已真机验过而类型化通道一次都没上过真机。
+                //      验收脚本 §36 对照两条路，通了再来退休这条旁路。
                 if (a == "POS" || a == "HPOS" || a == "TPOS" || a == "ORI")
                 {
                     // N1（指导书 2026-07-02）：入库前用 Geometry 类型自带解析器校验坐标/朝向串
@@ -450,10 +458,128 @@ namespace E3DMcpServer.Tools
 
                 var dbAttr = DbAttribute.GetDbAttribute(attr);
                 if (dbAttr == null) return $"Error: attribute '{attr}' not found";
-                dbElem.SetAttribute(dbAttr, value);
-                return $"OK: set {attr}={value} on {name}";
+                return SetAttributeTyped(dbElem, dbAttr, attr, value, name);
             }
             catch (Exception ex) { return $"Error: {ex.Message}"; }
+        }
+
+        /// <summary>
+        /// <b>类型化属性写入</b> —— 2026-07-31 逐条读完 `Aveva.Core.Database.xml` 之后的更正。
+        ///
+        /// ═══ 这条修的是本仓花代价最大的一族 bug ═══════════════════════════════════
+        /// 我们为 <c>HPOS/TPOS/DIAMETER</c> 花了**四跑 + 两个模块**（09 侧的拒发闸
+        /// <c>_e3dCallHelper</c> + 数值尺寸改道 <c>e3dNumericDimAttrs.ts</c>），
+        /// 真机第四跑收 <c>Error: Data of wrong type for attribute DIAM</c>。
+        /// 记录的根因是「<b>.NET 的 SetAttribute 只有 string 重载</b>」——
+        /// **那句话是错的**（本文件 :413 的注释也这么写着，一并更正）。
+        /// 官方 <c>DbElement</c> 上有全套类型化重载：
+        /// <code>
+        ///   SetAttribute(DbAttribute, Double / DbDouble / Int32 / Boolean / String / DateTime)
+        ///   SetAttribute(DbAttribute, Position / Direction / Orientation / DbElement / DbExpression)
+        ///   ＋ 全部数组重载  ＋ 带 out PdmsMessage 的「不抛异常、回 false 并给真错误文本」变体
+        /// </code>
+        /// **是我们的 wrapper 只包了 string 那一个，不是 E3D 只有 string。**
+        ///
+        /// 做法：先问 <c>DbAttribute.Type</c>（官方的 <c>DbAttributeType</c> 字典有 12 种），
+        /// 按类型把字符串解析成对应 CLR 类型，再调**匹配的那个重载**。
+        ///
+        /// ═══ 刻意保守的三点 ═══════════════════════════════════════════════════════
+        /// ① <b>POS/HPOS/TPOS/ORI 仍然走上面那条 PML 旁路</b>，不由本方法接管 ——
+        ///    那条是**真机验过的**（第六跑读回 `POS: E 0mm N 0mm U 2100mm`），
+        ///    而本方法**一次都没上过真机**。★先按最危险取、拿到证据再放宽。
+        ///    验收脚本 §36 会对照两条路，通了再来退休那条旁路。
+        /// ② 09 侧的数值尺寸改道 <b>同理不动</b>。两边都留着不冲突（改道在更外层），
+        ///    等 §36 证明这条通了再一起清。
+        /// ③ 解析不出来就<b>如实报</b>并**不发**，绝不悄悄回落到 string 通道 ——
+        ///    回落正是当年"命令成功、值没进去"的成因。
+        /// </summary>
+        private static string SetAttributeTyped(DbElement el, DbAttribute dbAttr, string attrName, string raw, string elName)
+        {
+            string v = (raw ?? "").Trim();
+            DbAttributeType t;
+            try { t = dbAttr.Type; }
+            catch (Exception ex)
+            {
+                return $"Error: 读不到属性 '{attrName}' 的类型（{ex.Message}）—— **未发送**。"
+                     + "★不猜类型：猜错就是把值写进错的通道，正是我们栽过的那一族。";
+            }
+
+            try
+            {
+                switch (t)
+                {
+                    case DbAttributeType.INTEGER:
+                    {
+                        int iv;
+                        if (!int.TryParse(v, out iv))
+                            return $"Error: 属性 '{attrName}' 是**整数**型，而给的是 '{v}' —— **未发送**。";
+                        el.SetAttribute(dbAttr, iv);
+                        return $"OK: set {attrName}={iv} on {elName}  [Int32 通道]";
+                    }
+                    case DbAttributeType.DOUBLE:
+                    {
+                        // ★数值尺寸（DIAM/HEIG/RADI…）就是这一支 —— 正是 `Data of wrong type` 的那族
+                        double dv;
+                        if (!double.TryParse(v, System.Globalization.NumberStyles.Float,
+                                             System.Globalization.CultureInfo.InvariantCulture, out dv))
+                            return $"Error: 属性 '{attrName}' 是**浮点**型，而给的是 '{v}' —— **未发送**。";
+                        el.SetAttribute(dbAttr, dv);
+                        return $"OK: set {attrName}={dv} on {elName}  [Double 通道]";
+                    }
+                    case DbAttributeType.BOOL:
+                    {
+                        bool bv;
+                        var u = v.ToUpperInvariant();
+                        if (u == "TRUE" || u == "T" || u == "1" || u == "YES" || u == "ON") bv = true;
+                        else if (u == "FALSE" || u == "F" || u == "0" || u == "NO" || u == "OFF") bv = false;
+                        else return $"Error: 属性 '{attrName}' 是**布尔**型，而给的是 '{v}' —— **未发送**。";
+                        el.SetAttribute(dbAttr, bv);
+                        return $"OK: set {attrName}={bv} on {elName}  [Boolean 通道]";
+                    }
+                    case DbAttributeType.ELEMENT:
+                    {
+                        // 引用型（CATREF/SPREF 那族）—— 值是元素路径，要先解引用
+                        var target = DbElement.GetElement(v.StartsWith("/") ? v : "/" + v);
+                        if (!target.IsValid)
+                            return $"Error: 属性 '{attrName}' 是**引用**型，而 '{v}' 解析不出元素 —— **未发送**。";
+                        el.SetAttribute(dbAttr, target);
+                        return $"OK: set {attrName}→{v} on {elName}  [DbElement 通道]";
+                    }
+                    case DbAttributeType.DATETIME:
+                    {
+                        DateTime dt;
+                        if (!DateTime.TryParse(v, out dt))
+                            return $"Error: 属性 '{attrName}' 是**日期**型，而给的是 '{v}' —— **未发送**。";
+                        el.SetAttribute(dbAttr, dt);
+                        return $"OK: set {attrName}={dt:s} on {elName}  [DateTime 通道]";
+                    }
+                    case DbAttributeType.STRING:
+                    case DbAttributeType.WORD:
+                        el.SetAttribute(dbAttr, v);
+                        return $"OK: set {attrName}={v} on {elName}  [String 通道]";
+
+                    case DbAttributeType.POSITION:
+                    case DbAttributeType.DIRECTION:
+                    case DbAttributeType.ORIENTATION:
+                        // ★正常到不了这里（上面 POS/HPOS/TPOS/ORI 已被 PML 旁路截走）。
+                        //   到了 = 是另一个坐标类属性，如实说清楚，**不猜着发**。
+                        return $"Error: 属性 '{attrName}' 是**{t}**型。这类属性当前只走 PML 旁路，"
+                             + "而旁路只认 POS/HPOS/TPOS/ORI 四个名字 —— **未发送**。"
+                             + "★把这句贴回来，把该属性名加进旁路名单（或等 §36 验证类型化 .NET 通道后统一走那条）。";
+
+                    default:
+                        // 数组型（STRINGARRAY）/ BLOB 等 —— 如实说不支持，不回落
+                        return $"Error: 属性 '{attrName}' 的类型是 **{t}**，本通道还没实现 —— **未发送**。"
+                             + "★不回落到字符串通道：回落正是当年『命令成功、值没进去』的成因。";
+                }
+            }
+            catch (Exception ex)
+            {
+                // 类型对了但 E3D 仍拒（只读 / 没 claim / 值超范围…）—— 把 E3D 的原话带回去
+                return $"Error: set {attrName} on {elName} 被 E3D 拒（{t} 通道）: {ex.GetBaseException().Message}"
+                     + "\n★类型是对的（已按 DbAttribute.Type 派发），所以不是 `Data of wrong type` 那一族。"
+                     + "先用 e3d_precheck 看这个元素能不能改、这个值合不合法。";
+            }
         }
 
         // 建元素 = PDMS **真实建模范式**（依据用户培训资料 PDMS常用命令.pdf：`New Pipe /name`、

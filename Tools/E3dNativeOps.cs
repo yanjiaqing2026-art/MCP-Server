@@ -143,18 +143,30 @@ namespace E3DMcpServer.Tools
                     new[] { typeof(DbElement), Type.GetType("Aveva.Core.Database.DbCopyOption, Aveva.Core.Database") });
                 if (mi == null)
                     return "copytree: 找不到 CreateCopyHierarchyAfter(DbElement, DbCopyOption) —— 这个 E3D 版本签名不同。";
+                // ⛔ 2026-07-31 更正：我原来写的是「`DbCopyOption` 的取值官方没说明，**不猜**」，
+                //    然后用 `Activator.CreateInstance` 瞎构造。**它有完整文档**：
+                //      FromName · ToName · **Rename**(True=复制时改名) ·
+                //      ReExecuteRules · IncludeRules · **ExceptionList**(排除不想复制的子件)
+                //    其中 `Rename` 正好解掉「复制出来名字全局撞车」那个问题
+                //    （E3D 名字全局唯一，我们撞 (41,12) 撞了好几跑）。
                 var optType = mi.GetParameters()[1].ParameterType;
                 object opt;
                 try { opt = Activator.CreateInstance(optType); }
                 catch { opt = Enum.GetValues(optType).GetValue(0); }   // 是枚举就取第一个值
+                // ★把已知的三个开关设上；设不上**如实记一行**，不静默（静默 = 复制行为和你以为的不一样）
+                var optNote = new StringBuilder();
+                SetOpt(optType, opt, "Rename", true, optNote);            // 复制时改名，避开全局重名
+                SetOpt(optType, opt, "ReExecuteRules", true, optNote);    // 重跑规则，让派生属性跟着新位置走
+                SetOpt(optType, opt, "IncludeRules", true, optNote);      // 连规则一起复制
                 var res = mi.Invoke(after, new object[] { src, opt });
                 if (res == null) return "copytree: 回 null（没复制出来）。";
                 var ne = (DbElement)res;
                 string nm = null;
                 try { nm = ne.GetAsString(DbAttributeInstance.NAME); } catch { }
                 return "copytree: 复制成功 → " + (string.IsNullOrWhiteSpace(nm) ? ne.ToString() : nm)
-                     + "\n★注意：复制出来的整棵树的**名字是 E3D 自动给的**，"
-                     + "而 E3D 名字**全局唯一** —— 要按自己的命名规则改名得逐个 rename。";
+                     + (optNote.Length > 0 ? "\n★复制选项：" + optNote : "\n★复制选项 Rename/ReExecuteRules/IncludeRules 已设上")
+                     + "\n★注意：复制出来的整棵树的名字由 E3D 按 `Rename` 规则分配，"
+                     + "而 E3D 名字**全局唯一** —— 建完用 e3d_native_ops action=members 核对实际名字。";
             }
             catch (Exception ex) { return "copytree: 抛异常：" + Inner(ex); }
         }
@@ -201,6 +213,20 @@ namespace E3DMcpServer.Tools
                      + " 重名要真发才知道（E3D 名字全局唯一，撞了回 (41,12)）。";
             }
             catch (Exception ex) { return "namecheck: 抛异常：" + Inner(ex); }
+        }
+
+        /// <summary>设 DbCopyOption 的一个开关；设不上**如实记一行**，不静默
+        /// （静默 = 复制行为和你以为的不一样，正是本仓反复栽的那一族）。</summary>
+        private static void SetOpt(Type t, object opt, string prop, object val, StringBuilder note)
+        {
+            try
+            {
+                var p = t.GetProperty(prop, BindingFlags.Public | BindingFlags.Instance);
+                if (p == null || !p.CanWrite) { note.Append("[").Append(prop).Append(" 设不上] "); return; }
+                p.SetValue(opt, val, null);
+                note.Append(prop).Append("=").Append(val).Append(" ");
+            }
+            catch (Exception ex) { note.Append("[").Append(prop).Append("=").Append(Inner(ex)).Append("] "); }
         }
 
         // ── 共用 ────────────────────────────────────────────────────────────────

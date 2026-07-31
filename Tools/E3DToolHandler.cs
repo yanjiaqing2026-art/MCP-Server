@@ -131,6 +131,7 @@ namespace E3DMcpServer.Tools
                     case "e3d_analysis":           return HandleAnalysis(args);
                     case "e3d_fab_check":          return HandleFabCheck(args);
                     case "e3d_precheck":           return HandlePrecheck(args);
+                    case "e3d_pml_query":          return HandlePmlQuery(args);
                     case "e3d_status_read":        return HandleStatus(args, false);
                     case "e3d_status_write":       return HandleStatus(args, true);
                     case "e3d_spec_select":       return HandleSpecSelect(args);
@@ -463,13 +464,22 @@ namespace E3DMcpServer.Tools
                                       a?["arg2"]?.Value<string>(), a?["max"]?.Value<int>() ?? 100));
         }
 
+        /// <summary>★PML 变量按类型读回 —— 见 E3dPmlQuery.cs 头注（GetStringArrayFromPML 此前 0 使用）。</summary>
+        ToolCallResult HandlePmlQuery(JObject a)
+        {
+            var v = a?["var"]?.Value<string>();
+            if (string.IsNullOrWhiteSpace(v)) return Err("请提供 var（要读回的 PML 变量名，如 !!PCQ）。");
+            return Ok(E3dPmlQuery.Run(a?["pml"]?.Value<string>(), v, a?["kind"]?.Value<string>(),
+                                      a?["cleanup"]?.Value<bool>() ?? true, a?["max"]?.Value<int>() ?? 500));
+        }
+
         /// <summary>★改之前先问 —— 见 E3dPrecheck.cs 头注（可改性 / 真属性清单 / 值合法性）。</summary>
         ToolCallResult HandlePrecheck(JObject a)
         {
             var names = a?["names"]?.Value<string>();
             if (string.IsNullOrWhiteSpace(names)) return Err("请提供 names（元素路径，逗号分隔）。");
-            return Ok(E3dPrecheck.Run(names, a?["attr"]?.Value<string>(),
-                                      a?["value"]?.Value<string>(), a?["max"]?.Value<int>() ?? 60));
+            return Ok(E3dPrecheck.Run(names, a?["attr"]?.Value<string>(), a?["value"]?.Value<string>(),
+                                      a?["new_type"]?.Value<string>(), a?["max"]?.Value<int>() ?? 60));
         }
 
         /// <summary>★管道可制造性检查 —— 见 E3dFabCheck.cs 头注（含"为什么按写对待"）。</summary>

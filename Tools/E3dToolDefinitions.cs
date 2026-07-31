@@ -115,11 +115,21 @@ namespace E3DMcpServer.Tools
                    P("max:integer:每类最多列多少条, 默认100。★超了会**明说不是没有**。可选。"),
                    R("action"), R("names")),
 
+                // ★2026-07-31 PML 数组通道 —— 见 E3dPmlQuery.cs 头注（这条修的是"走了三轮弯路"那族）。
+                T("e3d_pml_query", "★**跑一段 PML 并按类型把变量读回来**（含**数组**）。此前插件唯一取值通道 `GetStringFromPML` **只读字符串**, 所以 COLLECT/EVALUATE/`!!ce.MEM`/`.ATTRIBUTES()` 这类**返回数组**的全拿不回 —— 而同一个 Command 类上就有 `GetStringArrayFromPML`, 只是**从没用过**。kind: strarray(默认, 走 GetStringArrayFromPML) / string / double / int / bool。★回执把「**读不回**」与「**查出来是 0 项**」分开报——两句话指向完全不同的下一步。★命令没跑成就**不读变量**(读到的可能是上次残值)。⚠ **未上真机**: 「类上有这个方法」只证明够得着, 不证明它对 COLLECT 产的数组真回得来。",
+                   P("pml:string:要执行的 PML（给变量赋值），如 `VAR !!PCQ COLLECT ALL EQUI`。可留空只读已有变量。"),
+                   P("var:string:要读回的变量名, 如 `!!PCQ`。必填。"),
+                   P("kind:string:strarray | string | double | int | bool。默认 strarray。可选。"),
+                   P("cleanup:boolean:读完是否删掉该变量, 默认 true（不给会话留垃圾）。可选。"),
+                   P("max:integer:最多列多少项, 默认500。★超了会**明说不是没有**。可选。"),
+                   R("var")),
+
                 // ★2026-07-31 改之前先问 —— 这三件事 AVEVA 都能在**发送前**回答（见 E3dPrecheck.cs 头注）。
                 T("e3d_precheck", "★★**改一个元素之前先问它**（全只读, 随便调）。三件事一次答: ① **能不能改** —— 已被别人 claim / 只读 / 已锁（E3D 是**多人同库**, 别人 claim 了的你改不动, 而不问就会发一批命令、一半失败、然后去'修'一个不是你造成的问题）② **它真有哪些属性** —— 走 GetAllVisibleAttributes, **不是 e3d_attr_list 里那份写死的 34 个名单** ③ **这个值合不合法** —— 传 attr+value, 走 DbAttribute.IsAllowed, **发送前**就知道, 不用再靠发一条收 `Data of wrong type`。★三件事的下一步各不相同（没 claim→先 claim / 只读锁住→别发 / 值不合法→换值), 别混成一句'改不了'。",
                    P("names:string:元素路径, 逗号分隔。必填。"),
                    P("attr:string:要写的属性名（想问'值合不合法'时给）。可选。"),
                    P("value:string:打算写的值。给了才判合法性; 只给 attr 则只答'这个类型有没有这个属性'。可选。"),
+                   P("new_type:string:想在这些元素**下面**建的类型码。给了就答'这儿能不能建'（走 DbElement.IsCreatable, 离线可答, 不用再靠真机回 (41,8)）。可选。"),
                    P("max:integer:最多处理多少个元素, 默认60。★超了会**明说不是没有**。可选。"),
                    R("names")),
 

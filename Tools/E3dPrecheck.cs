@@ -1,4 +1,4 @@
-using System;
+﻿using System;
 using System.Collections.Generic;
 using System.Reflection;
 using System.Text;
@@ -37,7 +37,7 @@ namespace E3DMcpServer.Tools
     /// </summary>
     internal static class E3dPrecheck
     {
-        public static string Run(string names, string attr, string value, int max)
+        public static string Run(string names, string attr, string value, string newType, int max)
         {
             if (string.IsNullOrWhiteSpace(names))
                 return "precheck: 缺 names（元素路径，逗号分隔）。";
@@ -116,11 +116,118 @@ namespace E3DMcpServer.Tools
                 // ③ 这个值合不合法 —— 发 attr_set 之前问，别等 `Data of wrong type`
                 if (!string.IsNullOrWhiteSpace(attr) && et != null)
                     sb.Append(AllowedLine(et, attr.Trim(), value));
+
+                // ④★2026-07-31 逐条读完 XML 后补的三条，**都比 ①②③ 更准**
+                if (!string.IsNullOrWhiteSpace(attr))
+                    sb.Append(ElementLevelLines(el, attr.Trim()));
+            }
+
+            // ⑤ 这个位置能不能建某类型 —— 此前靠真机回 (41,8)
+            if (!string.IsNullOrWhiteSpace(newType))
+            {
+                sb.Append("── 能不能在上面这些元素下建 ").Append(newType).Append("\n");
+                DbElementType nt = null;
+                try { nt = DbElementType.GetElementType(newType.Trim()); } catch { }
+                if (nt == null || !nt.IsValid)
+                    sb.Append("   类型「").Append(newType).Append("」解析不出 —— 用 e3d_type_schema 查全名/短名。\n");
+                else
+                    foreach (var raw in (names ?? "").Split(','))
+                    {
+                        var p = (raw ?? "").Trim();
+                        if (p.Length == 0) continue;
+                        try
+                        {
+                            var el = DbElement.GetElement(p);
+                            if (!el.IsValid) continue;
+                            // ★`DbElement.IsCreatable(DbElementType)` 签名毫无歧义。
+                            //   我此前写了"不做，因为 ElementTreeListUtility.IsCreatable(DbElement,DbElement)
+                            //   猜不出参数顺序" —— 那个判断没错，**但我找错了地方**。
+                            sb.Append("   ").Append(p).Append(" → ")
+                              .Append(el.IsCreatable(nt) ? "**可以建**" : "**建不了**").Append('\n');
+                        }
+                        catch (Exception ex) { sb.Append("   ").Append(p).Append(" → (**判不了**: ").Append(Inner(ex)).Append(")\n"); }
+                    }
             }
 
             return "precheck（**改之前先问** —— 全只读）：\n" + sb
                  + "★三件事的下一步各不相同：没 claim → 先 claim；只读/已锁 → 别发；"
                  + "值不合法 → 换值或换属性。别混成一句\"改不了\"。\n";
+        }
+
+        /// <summary>
+        /// ★2026-07-31 —— 逐条读完 XML 后补的**元素级**三条，都比类型级的更准：
+        ///   `element.IsAttributeSetable(attr)`          「**这个属性**能不能改」，比元素级 IsReadOnly 准
+        ///   `element.GetAttributeAllowedValues(attr, out String[])`   「**能填哪些**」，不是「这个值行不行」
+        ///   `element.GetAttributeAllowedRanges(attr, out Double[])`   数值型的合法区间
+        ///   `DbAttribute.GetDefault(型, out T)`         属性的**官方默认值**（我们一直在猜）
+        /// ★我搜到并用上了 `IsAllowed`，而 `AllowedValues` 就在它下面一行 —— 关键词不匹配，所以看不见。
+        /// </summary>
+        private static string ElementLevelLines(DbElement el, string attrName)
+        {
+            var sb = new StringBuilder();
+            DbAttribute a;
+            try { a = DbAttribute.GetDbAttribute(attrName); if (a == null) return ""; }
+            catch { return ""; }
+
+            // a) 这个属性能不能改（元素级 + 属性级，比 IsReadOnly 准）
+            try { sb.Append("   ").Append(attrName).Append(" 能不能设：").Append(el.IsAttributeSetable(a) ? "**能**" : "**不能**").AppendLine(); }
+            catch (Exception ex) { sb.Append("   ").Append(attrName).Append(" 能不能设：(**判不了** ").Append(Inner(ex)).Append(")").AppendLine(); }
+
+            // b) ★能填哪些 —— 这条比「这个值行不行」有用得多
+            try
+            {
+                string[] vals = null;
+                if (el.GetAttributeAllowedValues(a, ref vals) && vals != null && vals.Length > 0)
+                {
+                    sb.Append("   ★合法取值（").Append(vals.Length).Append(" 个）：");
+                    for (int i = 0; i < vals.Length && i < 40; i++) sb.Append(vals[i]).Append(' ');
+                    if (vals.Length > 40) sb.Append("  ★只列前 40（不是没有）");
+                    sb.AppendLine();
+                }
+            }
+            catch { /* 不是枚举型属性就没有取值表，不报错 */ }
+
+            // c) 数值型的合法区间
+            try
+            {
+                double[] rng = null;
+                if (el.GetAttributeAllowedRanges(a, ref rng) && rng != null && rng.Length > 0)
+                {
+                    sb.Append("   ★合法区间：");
+                    for (int i = 0; i + 1 < rng.Length; i += 2) sb.Append('[').Append(rng[i]).Append(", ").Append(rng[i + 1]).Append("] ");
+                    sb.AppendLine();
+                }
+            }
+            catch { }
+
+            // d) 官方默认值 —— 按属性类型挑重载
+            try
+            {
+                var et = el.GetElementType();
+                switch (a.Type)
+                {
+                    // ⛔ `GetDefault` 回的是 **PdmsMessage** 不是 bool —— 又一次「看到签名 ≠ 知道怎么调」。
+                    //    非空消息 = 没拿到（如这个类型上根本没定义默认值），此时**什么都不说**，
+                    //    不把「没有默认值」报成「默认值是 0」。
+                    case DbAttributeType.INTEGER:
+                    { int d; var m = a.GetDefault(et, out d); if (IsOk(m)) sb.Append("   官方默认值：").Append(d).AppendLine(); break; }
+                    case DbAttributeType.DOUBLE:
+                    { double d; var m = a.GetDefault(et, out d); if (IsOk(m)) sb.Append("   官方默认值：").Append(d).AppendLine(); break; }
+                    case DbAttributeType.BOOL:
+                    { bool d; var m = a.GetDefault(et, out d); if (IsOk(m)) sb.Append("   官方默认值：").Append(d).AppendLine(); break; }
+                    case DbAttributeType.STRING:
+                    { string d; var m = a.GetDefault(et, out d); if (IsOk(m) && !string.IsNullOrEmpty(d)) sb.Append("   官方默认值：").Append(d).AppendLine(); break; }
+                }
+            }
+            catch { }
+
+            // e) 单位与量纲 —— 「小 1000 倍」那个 bug 的根治面
+            try
+            {
+                sb.Append("   类型/单位/量纲：").Append(a.Type).Append(" · ").Append(a.Units).Append(" · ").Append(a.Dimension).AppendLine();
+            }
+            catch { }
+            return sb.ToString();
         }
 
         /// <summary>`DbAttribute.IsAllowed(DbElementType, Int32|Double|String)` —— 按值的形状挑重载。</summary>
@@ -162,6 +269,13 @@ namespace E3DMcpServer.Tools
             }
             catch (Exception ex) { sb.Append("   值合法性：(**判不了** —— ").Append(Inner(ex)).Append(")\n"); }
             return sb.ToString();
+        }
+
+        /// <summary>PdmsMessage 空 = 成功。★拿不到默认值时**什么都不说**，不报成「默认值是 0」。</summary>
+        private static bool IsOk(Aveva.Core.Utilities.Messaging.PdmsMessage m)
+        {
+            try { return m == null || string.IsNullOrWhiteSpace(E3dApiWrapper.MsgText(m)); }
+            catch { return false; }
         }
 
         /// <summary>static(DbElement)→Boolean；★抛异常回「判不了」**不回 false**。</summary>
