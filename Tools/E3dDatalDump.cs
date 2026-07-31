@@ -13,13 +13,21 @@ namespace E3DMcpServer.Tools
     /// 用户问："MCP 是不是能完全拿到 E3D 的反馈"。把全量索引里**所有出数通道**扫了一遍，
     /// 结论分两半，**必须分清**：
     ///
-    /// ✗ <b>命令窗口的正常打印 —— 拿不到</b>（这条是死的，别再试）
+    /// ⚠ <b>命令窗口的正常打印 —— 这两条 .NET 通道拿不到</b>
     ///    · <c>PdmsOutputEvents.AddOutputListener</c> 真机实测**只流 `ERROR/`** 一类
     ///      （第十四跑：收到事件 18 个，Type/Category 全是 ERROR）
     ///    · <c>PdmsOutputEventsImpl</c> 上确实有 <c>PdmsStringWriter()</c> / <c>ConsoleTextWriter()</c>
     ///      —— 那是控制台文本流本身，**但它们是实例方法，而 `PdmsOutputEvents` 是 abstract、
     ///      只有 `protected static _outputListeners`，没有任何公开途径拿到 Impl 实例**。
-    ///      ★所以 `Q NAME` / `LIST` 那类**正常打印**，MCP 拿不到。**这是能力边界，不是我们没写。**
+    ///      ★所以 `Q NAME` / `LIST` 那类**正常打印**，这两条通道拿不到。
+    ///
+    /// ⛔⛔ <b>但我曾在这儿写「这是能力边界，不是我们没写」—— <u>那句话错了</u></b>。
+    ///    用户当时反问：**「照道理不会的，一定有一个输出。」** 他是对的 ——
+    ///    我证明的只是**我试过的那两条**（都是 .NET 通道）拿不到。
+    ///    PDMS 自己有一条**命令级**的输出重定向：<c>ALPHA LOG &lt;file&gt; OVER</c> … <c>ALPHA LOG END</c>。
+    ///    ✅ **第十九跑真机验证通过**（§39）：`Q NAME` 回 `Name /PCT39-204944`、
+    ///    `$Q` 回 PDMS 语法提示表（`'MA/RKELE' 'UNM/ARK' …`）。见 <see cref="E3dAlphaLog"/>。
+    ///    ★**看到两条路走不通，不等于只有两条路。**
     ///
     /// ✅ <b>元素数据本身 —— 拿得到，而且是全量</b>（本文件做的就是这条）
     ///    <c>DatalListing.Instance</c> 是 **Public Static**（反射实测），可直接用：

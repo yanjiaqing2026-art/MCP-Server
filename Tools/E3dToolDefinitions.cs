@@ -164,7 +164,7 @@ namespace E3DMcpServer.Tools
                    P("max_chars:integer:回执里最多带回多少字符, 默认 20000。★超了会**明说已截断**。可选。"),
                    R("command")),
                 // ★2026-07-31 —— 回答「MCP 能不能完全拿到 E3D 反馈」的那一半。
-                T("e3d_datal_dump", "★**把元素的全部数据导出来**（走 AVEVA 官方 DatalListing，即 E3D 里 DATAL 命令背后的引擎）。用于: 一次拿到一批元素的完整属性/结构, 比逐个 attr_read 快一个数量级; 也用于把工程师建好的真实构件**整份读出来照抄**。★与 e3d_attr_read 的分工: attr_read 点名读几个属性, 本工具**全量导**。⚠ **命令窗口的正常打印(Q/LIST 那类)MCP 拿不到** —— PdmsOutputEvents 只流错误, 那是能力边界; 但**数据本身**走这条能全量拿到。",
+                T("e3d_datal_dump", "★**把元素的全部数据导出来**（走 AVEVA 官方 DatalListing，即 E3D 里 DATAL 命令背后的引擎）。用于: 一次拿到一批元素的完整属性/结构, 比逐个 attr_read 快一个数量级; 也用于把工程师建好的真实构件**整份读出来照抄**。★与 e3d_attr_read 的分工: attr_read 点名读几个属性, 本工具**全量导**。⚠ **命令窗口的打印请用 e3d_alpha_log** (Q/LIST/$Q 那家); 此处曾写「拿不到, 是能力边界」—— **那句话错了**, 第十九跑 ALPHA LOG 已真机证伪; 本条管的是**数据本身**走这条能全量拿到。",
                    P("names:string:要导出的元素路径, 逗号分隔。必填。"),
                    P("brief:boolean:简表(true)还是完整(false), 默认 false。可选。"),
                    P("comments:boolean:是否含注释, 默认 false。可选。"),
