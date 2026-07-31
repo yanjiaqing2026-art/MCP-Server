@@ -128,6 +128,7 @@ namespace E3DMcpServer.Tools
                     case "e3d_type_schema":        return HandleTypeSchema(args);
                     case "e3d_native_ops":         return HandleNativeOps(args);
                     case "e3d_datal_dump":         return HandleDatalDump(args);
+                    case "e3d_alpha_log":          return HandleAlphaLog(args);
                     case "e3d_analysis":           return HandleAnalysis(args);
                     case "e3d_fab_check":          return HandleFabCheck(args);
                     case "e3d_precheck":           return HandlePrecheck(args);
@@ -513,6 +514,21 @@ namespace E3DMcpServer.Tools
         }
 
         /// <summary>★DATAL 全量导出 —— 见 E3dDatalDump.cs 头注（MCP 反馈边界在哪）。</summary>
+        /// <summary>
+        /// ★★<b>ALPHA LOG —— 命令窗口输出的第三条通道</b>（见 E3dAlphaLog.cs 头注）。
+        ///
+        /// 我曾把「拿不到命令窗口打印」写成结论，用户点破：**「照道理不会的，一定有一个输出。」**
+        /// 我证明的只是**我试过的那两条 .NET 通道**拿不到，而 PDMS 自己有一条命令级的
+        /// 输出重定向（<c>ALPHA LOG &lt;file&gt; OVER</c> … <c>ALPHA LOG END</c>）。
+        /// **看到两条路走不通，不等于只有两条路。**
+        /// </summary>
+        ToolCallResult HandleAlphaLog(JObject a)
+        {
+            var cmd = a?["command"]?.Value<string>();
+            if (string.IsNullOrWhiteSpace(cmd)) return Err("请提供 command（要跑的命令，多行用换行符分隔）。");
+            return Ok(E3dAlphaLog.Run(cmd, a?["max_chars"]?.Value<int>() ?? 20000));
+        }
+
         ToolCallResult HandleDatalDump(JObject a)
         {
             var names = a?["names"]?.Value<string>();

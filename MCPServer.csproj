@@ -28,6 +28,7 @@
     <Compile Include="Tools\E3dSpecSelect.cs" />
     <Compile Include="Tools\E3dNativeOps.cs" />
     <Compile Include="Tools\E3dDatalDump.cs" />
+    <Compile Include="Tools\E3dAlphaLog.cs" />
     <Compile Include="Tools\E3dAnalysis.cs" />
     <Compile Include="Tools\E3dResolve.cs" />
     <Compile Include="Tools\E3dStatus.cs" />
