@@ -127,9 +127,13 @@ namespace E3DMcpServer.Tools
                 var box = Aveva.Core.Geometry.LimitsBox.Create(p1, p2);
 
                 // SpatialImpl 在 Implementation 命名空间，反射取（不静态引用 Impl）
-                var t = Type.GetType("Aveva.Core3D.Clasher.Implementation.SpatialImpl, Aveva.Core3D.Clasher")
-                        ?? Type.GetType("Aveva.Core3D.Clasher.SpatialImpl, Aveva.Core3D.Clasher");
-                if (t == null) return "inbox: 找不到 SpatialImpl —— 这个 E3D 版本结构不同。";
+                // ★程序集真名是 **Aveva.Core3D.Clasher.Implementation**（全量索引实证），
+                //   我上一版写的 `Aveva.Core3D.Clasher` 是**命名空间** → 第十七跑回「找不到」。
+                var t = FindType("Aveva.Core3D.Clasher.Implementation.SpatialImpl",
+                                 "Aveva.Core3D.Clasher.Implementation", "Aveva.Core3D.Clasher")
+                        ?? FindType("Aveva.Core3D.Clasher.SpatialImpl", "Aveva.Core3D.Clasher");
+                if (t == null) return NotFound("inbox", "Aveva.Core3D.Clasher.Implementation.SpatialImpl",
+                                               "Aveva.Core3D.Clasher.Implementation", "Aveva.Core3D.Clasher");
                 MethodInfo mi = null;
                 foreach (var m in t.GetMethods(BindingFlags.Public | BindingFlags.Static | BindingFlags.Instance))
                 {
@@ -167,8 +171,11 @@ namespace E3DMcpServer.Tools
             if (els.Count == 0) return "rule: names 里一个元素都没解析出来。";
             try
             {
-                var t = Type.GetType("Aveva.Pdms.MMServices.AttributeTester, Aveva.Pdms.MMServices");
-                if (t == null) return "rule: 找不到 AttributeTester —— 这套 E3D 没装 MMServices。**不是规则引擎不行，是这个程序集不在**。";
+                // ★程序集真名 **MMServices**（§34 同一跑用这个名字调通了 Utilities）。
+                //   上一版写 `Aveva.Pdms.MMServices`（命名空间）→ 假报「没装 MMServices」。
+                var t = FindType("Aveva.Pdms.MMServices.AttributeTester", "MMServices", "Aveva.Pdms.MMServices");
+                if (t == null) return NotFound("rule", "Aveva.Pdms.MMServices.AttributeTester",
+                                               "MMServices", "Aveva.Pdms.MMServices");
                 var from = t.GetMethod("FromExpression", BindingFlags.Public | BindingFlags.Static);
                 if (from == null) return "rule: AttributeTester 上没有 FromExpression(String)。";
                 object tester;
@@ -221,12 +228,14 @@ namespace E3DMcpServer.Tools
         private static string Topo(string names, int max)
         {
             if (string.IsNullOrWhiteSpace(names)) return "topo: 缺 names（元素路径，逗号分隔）。";
-            var cm = Type.GetType("Aveva.Pdms.Integrator.CMUtility, Integrator");
-            var ut = Type.GetType("Aveva.Pdms.MMServices.Utilities, MMServices");
+            // ★这两个名字本来就是对的（第十七跑实证调通），改走 FindType 只为**同一套判据** ——
+            //   §31 那三处正是因为各写各的才把命名空间写成了程序集名。
+            var cm = FindType("Aveva.Pdms.Integrator.CMUtility", "Integrator", "Aveva.Pdms.Integrator");
+            var ut = FindType("Aveva.Pdms.MMServices.Utilities", "MMServices", "Aveva.Pdms.MMServices");
 
             var sb = new StringBuilder();
-            if (cm == null) sb.Append("⚠ 没装 Integrator —— 归属/流向/关联三项**查不了**（不是'没有'）。\n");
-            if (ut == null) sb.Append("⚠ 没装 MMServices —— 首末段**查不了**（不是'没有'）。\n");
+            if (cm == null) sb.Append("⚠ 找不到 Integrator.CMUtility —— 归属/流向/关联三项**查不了**（不是'没有'）。\n");
+            if (ut == null) sb.Append("⚠ 找不到 MMServices.Utilities —— 首末段**查不了**（不是'没有'）。\n");
             if (cm == null && ut == null) return sb + "topo: 两个程序集都不在，本动作无从谈起。";
 
             int n = 0;
@@ -299,8 +308,12 @@ namespace E3DMcpServer.Tools
             if (els.Count == 0) return "assoc: names 里一个元素都没解析出来。";
             try
             {
-                var t = Type.GetType("Aveva.Pdms.MMServices.AssociationManager, Aveva.Pdms.MMServices");
-                if (t == null) return "assoc: 找不到 AssociationManager —— 这套 E3D 没装 MMServices。";
+                // ★同上：程序集是 **MMServices**。索引里另有一个同名类型
+                //   `Aveva.CIE.Foundation.Platform.Tools.AssociationManager` —— **不是这个**
+                //   （`AssociatedSchematicElement(DbElement)` 只在 MMServices 那个上）。
+                var t = FindType("Aveva.Pdms.MMServices.AssociationManager", "MMServices", "Aveva.Pdms.MMServices");
+                if (t == null) return NotFound("assoc", "Aveva.Pdms.MMServices.AssociationManager",
+                                               "MMServices", "Aveva.Pdms.MMServices");
                 object inst = null;
                 var fi = t.GetField("Instance", BindingFlags.Public | BindingFlags.Static);
                 if (fi != null) inst = fi.GetValue(null);
@@ -402,6 +415,59 @@ namespace E3DMcpServer.Tools
             var e = ex;
             while (e is TargetInvocationException && e.InnerException != null) e = e.InnerException;
             return e.GetType().Name + ": " + e.Message;
+        }
+
+        // ── ⛔⛔ 2026-07-31 第十七跑：我把**命名空间当成了程序集名** ────────────────
+        /// <summary>
+        /// 按**类型全名**找类型，程序集名只作候选。
+        ///
+        /// ★为什么不能只写一个程序集名（第十七跑亲身证明）：
+        ///   `rule` / `assoc` 我写的是 `..., Aveva.Pdms.MMServices`（那是**命名空间**），
+        ///   真程序集叫 **`MMServices`** —— 于是两条都回了
+        ///   「**这套 E3D 没装 MMServices**」。而**同一跑** §34 用 `, MMServices`
+        ///   调 `Aveva.Pdms.MMServices.Utilities` **调通了**（回的是 `not SCBRANCH`
+        ///   这种领域异常，不是找不到类型）。
+        ///   → 那句诊断是**假的**，它会让人去装一个已经装着的模块。
+        ///   同族第三处：`SpatialImpl` 真程序集是 `Aveva.Core3D.Clasher.Implementation`。
+        ///
+        /// 修法不是"把名字改对"（下一套 E3D 可能又不一样），是**别依赖名字**：
+        ///   ① 逐个候选试 `Type.GetType(full + ", " + asm)`
+        ///   ② ★兜底扫 **已加载的程序集**，按类型全名找 —— 这一步与程序集叫什么无关
+        ///   ③ 都没有时，错误里**把试过的名字列出来**，让人分得开
+        ///      「这个模块没装」与「我把名字写错了」。
+        /// </summary>
+        private static Type FindType(string fullName, params string[] asmCandidates)
+        {
+            if (string.IsNullOrWhiteSpace(fullName)) return null;
+            foreach (var asm in asmCandidates ?? new string[0])
+            {
+                if (string.IsNullOrWhiteSpace(asm)) continue;
+                try { var t = Type.GetType(fullName + ", " + asm); if (t != null) return t; } catch { }
+            }
+            try { var t = Type.GetType(fullName); if (t != null) return t; } catch { }
+            // ★兜底：扫已加载程序集。程序集名写错在这一步不再有杀伤力。
+            try
+            {
+                foreach (var a in AppDomain.CurrentDomain.GetAssemblies())
+                {
+                    try { var t = a.GetType(fullName, false); if (t != null) return t; } catch { }
+                }
+            }
+            catch { }
+            return null;
+        }
+
+        /// <summary>找不到类型时的**可判定**说明 —— 分得开「没装」与「名字写错」。</summary>
+        private static string NotFound(string label, string fullName, params string[] asmCandidates)
+        {
+            var sb = new StringBuilder();
+            sb.Append(label).Append(": 找不到类型 ").Append(fullName);
+            sb.Append("（试过程序集 [").Append(string.Join(", ", asmCandidates ?? new string[0]));
+            sb.Append("]，并已扫过全部已加载程序集）。\n");
+            sb.Append("  ★两种可能，别混：① 这套 E3D 真的没装这个模块；");
+            sb.Append("② 该模块装了但**还没被加载进本进程**（反射只看得见已加载的）。\n");
+            sb.Append("  → 先在 E3D 里用一次相关功能再重试；仍找不到才是 ①。");
+            return sb.ToString();
         }
 
         /// <summary>★经 E3dResolve 三级解析（官方 GetElement(String) 已 DEPRECATED，只认当前 DB）。

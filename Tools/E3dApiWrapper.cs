@@ -1610,16 +1610,25 @@ namespace E3DMcpServer.Tools
             var sb = new StringBuilder();
             bool ok;
             string err = null;
+            string cmdResult = null;
             using (var cap = E3dOutputCapture.Begin())
             {
-                ok = TryRunPml(cmd, out err);
+                ok = TryRunPml(cmd, out err, out cmdResult);
                 sb.AppendLine(ok
                     ? "OK: 命令已执行"
                     : "REJECTED: " + (err ?? "E3D 未给出错误文本"));
                 if (cap.Attached)
                 {
                     string text = cap.Text();
-                    if (string.IsNullOrEmpty(text))
+                    // ★2026-07-31 第十七跑：listener 空时**先看 Command.Result** ——
+                    //   这条通道此前在 verbose 路上根本没被读过（见 TryRunPml 头注）。
+                    //   两条通道**分别标注来源**：读的人得知道这段字是谁给的。
+                    if (string.IsNullOrEmpty(text) && !string.IsNullOrWhiteSpace(cmdResult))
+                    {
+                        sb.AppendLine("--- E3D 输出（来源：Command.Result）---");
+                        sb.AppendLine(cmdResult);
+                    }
+                    else if (string.IsNullOrEmpty(text))
                     {
                         // ★★2026-07-30：原来这里只写「没打印任何东西」——**那是个推断，不是观测**。
                         //   真机 §21 实测：`Q NAME`/`Q TYPE`/`Q ATT`/`Q MEM`/`LIST`/`$Q` 全空，
@@ -1629,7 +1638,17 @@ namespace E3DMcpServer.Tools
                         //   —— 两种修法完全不同，而我们已经在这上面卡了好几跑。
                         //   现在把**收到的事件总数**与**Type/Category 取值**一起报出来，
                         //   下一跑就能当场分开。★这是观测，不是结论。
-                        sb.AppendLine("--- E3D 输出：(空) ---");
+                        // ⛔⛔ 2026-07-31 第十七跑：**这一行的形状是个契约，我改坏过一次**。
+                        //    原来写的是 `--- E3D 输出：(空) ---` —— `(空)` **在表头行上**。
+                        //    而 PS1 §21 的判据是「取 `E3D 输出` 之后的行，滤掉含 `E3D 输出`
+                        //    的那一行，看剩下有没有内容」→ **`(空)` 连同表头一起被滤掉了**，
+                        //    紧跟其后的三行诊断注解成了"内容" → 判成「有输出」。
+                        //    后果：第十五、十六、十七**三跑**都报 `14/14 条 Q 命令拿到了输出`，
+                        //    真值是 **0/14**。一个假绿灯比没有闸更坏 —— 我差点据此写下
+                        //    「$Q 读得到了，这是一条新能力」。
+                        //    → `(空)` **单独占一行**，任何按行判的判据都看得见它。
+                        sb.AppendLine("--- E3D 输出 ---");
+                        sb.AppendLine("(空)");
                         // ⛔ 2026-07-31 第十六跑更正：这里原来只印 `TotalEvents`，
                         //    而它是**进程级累加**的。印在单条命令旁边，读的人（我）
                         //    会把它当成"这条命令产生了 N 个错误" —— 我就是这么
@@ -1644,6 +1663,8 @@ namespace E3DMcpServer.Tools
                         if (!string.IsNullOrEmpty(kinds))
                             sb.AppendLine("  本进程收到过的 Type/Category: " + kinds
                                 + "  (若只有报错那一类 → 这条通道**天然只流错误**，不是我们漏收)");
+                        sb.AppendLine("  Command.Result 也是空 —— **两条取值通道都没给东西**"
+                            + "（listener 与 .Result），不是只试了一条。");
                     }
                     else
                     {
@@ -2155,9 +2176,34 @@ namespace E3DMcpServer.Tools
         /// </summary>
         private static bool TryRunPml(string cmd, out string error)
         {
+            string _ignored;
+            return TryRunPml(cmd, out error, out _ignored);
+        }
+
+        /// <summary>
+        /// ⛔ <b>2026-07-31 第十七跑：探针和修复在两条不同的通道上</b>
+        ///
+        /// 第十七跑 §21 报「$Q 读得到了」，而同一段日志里紧跟着
+        /// <c>--- E3D 输出：(空) ---</c>。查下来是**两个**独立问题叠在一起，
+        /// 这里修的是第二个：
+        ///
+        /// <c>$Q</c> 的白名单修复在 <see cref="RunPml"/> 里（`isReadOnly` →
+        /// <c>RunInCurrentScope()</c> + 读 <c>c.Result</c>），
+        /// 而 §21 探的是 <c>e3d_pml_exec_verbose</c> → <c>RunPmlVerbose</c> →
+        /// 本方法 → <c>c.Run()</c> —— <b>这条路一次都不读 <c>.Result</c></b>。
+        /// 所以那个修复**从来没被执行到**，探针再跑一百遍也观测不到。
+        ///
+        /// 修：把 <c>c.Result</c> 顺手带出来。
+        /// ★<b>不改任何语义</b>：`isReadOnly` 那道闸决定的是
+        ///   <c>RunInCurrentScope()</c> vs <c>Run()</c>（**作用域**，变量留不留存），
+        ///   而读 <c>.Result</c> 只是取一个属性 —— 与作用域无关，对写命令同样无副作用。
+        /// </summary>
+        private static bool TryRunPml(string cmd, out string error, out string result)
+        {
             var c = Aveva.Core.Utilities.CommandLine.Command.CreateCommand(cmd);
             bool ok;
             string captured = null;
+            result = null;
             // 捕获作用域包住执行 —— 非重入，已有作用域在跑时 Begin() 会如实回 Attached=false，
             // 那种情况下就只靠 Command.Error（不抢、不报假）。
             using (var cap = E3dOutputCapture.Begin())
@@ -2165,15 +2211,29 @@ namespace E3DMcpServer.Tools
                 ok = c.Run();                       // ★不再是 RunInPdms()
                 try { if (cap != null && cap.Attached) captured = cap.Text(); } catch { }
             }
+            try { result = c.Result; } catch { result = null; }   // ★纯属性读，无副作用
             LogPml(cmd, ok);
             if (ok) { error = null; return true; }
 
             error = SafeErrorText(c);
+            // ⛔⛔ 2026-07-31 第十七跑：这里原来是**二选一**（Error 空了才去捞流），
+            //    于是 §38 拿回的是 `Name /PCT38-163744 already used.` —— **散文，没有码**。
+            //    而 09 侧的 e3dErrorCodes 是**按 `(41,12)` 这种码**匹配的
+            //    （`matchE3DErrors` → `text.includes('(41,12)')`），
+            //    → 「错误通道修好了」是真的，「字典从此吃得到真码」**是假的**：一条都匹配不上。
+            //    ★改成**叠加**：Error 非空但**不带码**时，仍去输出流捞那条带码的行拼上。
+            //      两段各有出处（Command.Error 是官方返回值，流里那条 §13 实证有真码），
+            //      拼在一起 agent 既读得懂人话、程序也认得出码。
+            var fromStream = FirstErrorLine(captured);
+            bool hasCode = !string.IsNullOrWhiteSpace(error) && HasErrorCode(error);
             if (string.IsNullOrWhiteSpace(error) || error.Contains("未给出错误文本"))
             {
-                // Command.Error 空 → 从输出流捞（§13 实证这里有真码）
-                var fromStream = FirstErrorLine(captured);
                 if (!string.IsNullOrWhiteSpace(fromStream)) error = fromStream;
+            }
+            else if (!hasCode && !string.IsNullOrWhiteSpace(fromStream) && HasErrorCode(fromStream))
+            {
+                // ★码放**前面** —— 09 侧与人眼都先看见它；散文跟在后面不丢信息。
+                error = fromStream.Trim() + "  ｜  " + error.Trim();
             }
             return false;
         }
@@ -2196,6 +2256,20 @@ namespace E3DMcpServer.Tools
                     return line;
             }
             return null;
+        }
+
+        /// <summary>
+        /// 这段文本里**带不带** E3D 错误码 `(模块号,消息号)`。
+        ///
+        /// ★为什么单独一个判据：`FirstErrorLine` 要求码在**行首**（那是从流里挑行用的），
+        ///   而 `Command.Error` 是一整句散文，码若存在也在句中。两处判据不同，别复用。
+        /// ★决定「要不要去流里再捞一条拼上」—— 见 <c>TryRunPml</c> 里那段注释。
+        /// </summary>
+        private static bool HasErrorCode(string text)
+        {
+            if (string.IsNullOrWhiteSpace(text)) return false;
+            try { return System.Text.RegularExpressions.Regex.IsMatch(text, @"\(\s*\d+\s*,\s*\d+\s*\)"); }
+            catch { return false; }
         }
 
         /// <summary>取 Command.Error 的文本，任何异常都吞掉（错误通道自身绝不能抛）。</summary>
