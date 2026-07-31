@@ -921,9 +921,19 @@ namespace E3DMcpServer.Tools
                 }
                 // Detect query-style commands and try to capture output
                 string upper = command.Trim().ToUpper();
+                // ⛔ 2026-07-31 第十五跑读日志时发现的一个漏网：这份名单是**写死的前缀表**，
+                //   而 `$Q`（官方 SOFTCG13.13.14 的**语法提示查询**）**一个前缀都不匹配** ——
+                //   于是它走的是下面"修改类命令"分支，`.Result` **根本没被读过**。
+                //   本仓为「拿不到 $Q 的输出」记了很多轮，而真因只是它没进这张表。
+                // ★同时补上几个同样是只读、同样漏掉的：
+                //   `$Q`（语法提示）· `QUERY `（Q 的全称）· `PRINT `（打印表达式）
+                // ★仍然**只加确定只读的**：这张表决定走不走 `RunInCurrentScope`，
+                //   把一条会改库的命令误判成只读，就会在当前作用域里留下副作用。
+                //   拿不准的一律不加 —— 漏一个只是拿不到输出，加错一个是改坏数据。
                 bool isReadOnly = upper.StartsWith("Q ") || upper.StartsWith("QVAR ")
                     || upper == "LIST" || upper == "LIST ALL" || upper.StartsWith("DUMP")
-                    || upper.StartsWith("DISTANCE") || upper.StartsWith("Q ATT");
+                    || upper.StartsWith("DISTANCE") || upper.StartsWith("Q ATT")
+                    || upper.StartsWith("$Q") || upper.StartsWith("QUERY ") || upper.StartsWith("PRINT ");
 
                 if (isReadOnly)
                 {
