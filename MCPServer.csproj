@@ -29,6 +29,7 @@
     <Compile Include="Tools\E3dNativeOps.cs" />
     <Compile Include="Tools\E3dDatalDump.cs" />
     <Compile Include="Tools\E3dAnalysis.cs" />
+    <Compile Include="Tools\E3dResolve.cs" />
     <Compile Include="Tools\E3dStatus.cs" />
     <Compile Include="Tools\E3dFabCheck.cs" />
     <Compile Include="Tools\E3dPrecheck.cs" />

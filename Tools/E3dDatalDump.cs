@@ -52,7 +52,7 @@ namespace E3DMcpServer.Tools
                 if (p.Length == 0) continue;
                 try
                 {
-                    var e = DbElement.GetElement(p);
+                    var e = E3dResolveOrInvalid(p);
                     if (e.IsValid) els.Add(e); else bad.Add(p);
                 }
                 catch { bad.Add(p); }
@@ -140,6 +140,14 @@ namespace E3DMcpServer.Tools
             var e = ex;
             while (e is TargetInvocationException && e.InnerException != null) e = e.InnerException;
             return e.GetType().Name + ": " + e.Message;
+        }
+
+        /// <summary>★经 E3dResolve 三级解析（官方 GetElement(String) 已 DEPRECATED，只认当前 DB）。
+        /// 拿不到就回一个 invalid 元素 —— 调用方原有的 `IsValid` 判断照旧生效，形态不变。</summary>
+        private static DbElement E3dResolveOrInvalid(string path)
+        {
+            DbElement el; string why;
+            return E3dResolve.Element(path, out el, out why) ? el : DbElement.GetElement();
         }
     }
 }

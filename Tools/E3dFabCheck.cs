@@ -1,4 +1,4 @@
-using System;
+﻿using System;
 using System.Collections;
 using System.Collections.Generic;
 using System.Reflection;
@@ -79,7 +79,7 @@ namespace E3DMcpServer.Tools
                 DbElement el;
                 try
                 {
-                    el = DbElement.GetElement(path);
+                    el = E3dResolveOrInvalid(path);
                     if (!el.IsValid) { sb.Append("── ").Append(path).Append("\n   ✗ 不是有效元素。\n"); unknown++; continue; }
                 }
                 catch (Exception ex) { sb.Append("── ").Append(path).Append("\n   ✗ 解析抛异常：").Append(Inner(ex)).Append("\n"); unknown++; continue; }
@@ -214,7 +214,7 @@ namespace E3DMcpServer.Tools
                 DbElement el;
                 try
                 {
-                    el = DbElement.GetElement(p);
+                    el = E3dResolveOrInvalid(p);
                     if (!el.IsValid) { sb.Append("── ").Append(p).Append("\n   ✗ 不是有效元素。\n"); continue; }
                 }
                 catch (Exception ex) { sb.Append("── ").Append(p).Append("\n   ✗ 解析抛异常：").Append(Inner(ex)).Append("\n"); continue; }
@@ -287,6 +287,14 @@ namespace E3DMcpServer.Tools
             var e = ex;
             while (e is TargetInvocationException && e.InnerException != null) e = e.InnerException;
             return e.GetType().Name + ": " + e.Message;
+        }
+
+        /// <summary>★经 E3dResolve 三级解析（官方 GetElement(String) 已 DEPRECATED，只认当前 DB）。
+        /// 拿不到就回一个 invalid 元素 —— 调用方原有的 `IsValid` 判断照旧生效，形态不变。</summary>
+        private static DbElement E3dResolveOrInvalid(string path)
+        {
+            DbElement el; string why;
+            return E3dResolve.Element(path, out el, out why) ? el : DbElement.GetElement();
         }
     }
 }

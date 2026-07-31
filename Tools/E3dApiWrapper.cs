@@ -1630,9 +1630,16 @@ namespace E3DMcpServer.Tools
                         //   现在把**收到的事件总数**与**Type/Category 取值**一起报出来，
                         //   下一跑就能当场分开。★这是观测，不是结论。
                         sb.AppendLine("--- E3D 输出：(空) ---");
-                        sb.AppendLine("  收到事件数: " + E3dOutputCapture.TotalEvents
+                        // ⛔ 2026-07-31 第十六跑更正：这里原来只印 `TotalEvents`，
+                        //    而它是**进程级累加**的。印在单条命令旁边，读的人（我）
+                        //    会把它当成"这条命令产生了 N 个错误" —— 我就是这么
+                        //    写下"失败报成了成功"这个不成立的结论的。
+                        //    → **两个数分开印，各自标清楚是谁的**。
+                        sb.AppendLine("  ★本次命令收到: " + cap.ScopeEvents
                             + "  (0 = 这条命令的输出**根本不走 PdmsOutputEvents**；"
                             + ">0 = 事件来了但文本取空，是 TextOf 的字段取错)");
+                        sb.AppendLine("  （本进程累计: " + E3dOutputCapture.TotalEvents
+                            + " —— **这个数与本条命令无关**，只是进程起来至今的总量，别拿它下结论）");
                         var kinds = E3dOutputCapture.SeenKindsText();
                         if (!string.IsNullOrEmpty(kinds))
                             sb.AppendLine("  本进程收到过的 Type/Category: " + kinds

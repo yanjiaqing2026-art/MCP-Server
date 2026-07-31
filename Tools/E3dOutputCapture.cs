@@ -235,7 +235,17 @@ namespace E3DMcpServer.Tools
         ///     ② 事件来了但文本是空的（我们的 TextOf 取错字段）
         ///   —— 这两种的修法完全不同。有了这个计数，下一跑就能**分得开**。
         /// </summary>
+        /// ⛔ <b>2026-07-31 第十六跑：这个计数器把我自己骗了一次。</b>
+        /// 它是 <c>static</c>、<b>进程级累加、从不重置</b> —— 意思是
+        /// 「插件加载以来这个 E3D 进程一共发过多少条消息」。
+        /// 而回执里那句「收到事件数: N」印在**单条命令**的输出旁边，
+        /// 我据此写下「这条命令收到 5 个 ERROR 事件 → 失败报成了成功」——
+        /// <b>那是把进程计数读成了单命令计数</b>，结论不成立
+        /// （第十六跑同一条命令显示 2，只是累计量不同而已）。
+        /// ★修：**同时给出本次作用域内的计数**，两个数分开印，谁也不冒充谁。
         internal static int TotalEvents;
+        /// <summary>本次捕获作用域内收到的条数 —— **这个才是「这条命令的」**。</summary>
+        internal int ScopeEvents;
         /// <summary>收到过的 Type/Category 取值（去重）。★如果只有 ERROR 一类，
         /// 就证明这条通道**天然只流错误**，而不是我们漏收了。</summary>
         internal static readonly System.Collections.Generic.HashSet<string> SeenKinds =
@@ -253,6 +263,7 @@ namespace E3DMcpServer.Tools
             {
                 if (message == null) return;
                 System.Threading.Interlocked.Increment(ref TotalEvents);
+                try { var a = _active; if (a != null) a.ScopeEvents++; } catch { }
                 // ★把 PdmsOutput 的 Type/Category 记下来 —— 官方字段，反射读出来的真名。
                 //   不读它 = 永远说不出"为什么只流错误"（这条欠了好几跑）。
                 try
